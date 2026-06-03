@@ -1,0 +1,218 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Apple Premium Theme - Vortex Equality Professional Investment Platform */
+  /* Primary: Apple Blue #0071E3 | Background: Shark Dark #1D1D1F */
+  --background: oklch(0.145 0.005 285);
+  --foreground: oklch(0.97 0.005 285);
+  --card: oklch(0.20 0.005 285);
+  --card-foreground: oklch(0.97 0.005 285);
+  --popover: oklch(0.20 0.005 285);
+  --popover-foreground: oklch(0.97 0.005 285);
+  --primary: oklch(0.55 0.19 250);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.25 0.005 285);
+  --secondary-foreground: oklch(0.90 0.005 285);
+  --muted: oklch(0.25 0.005 285);
+  --muted-foreground: oklch(0.65 0.005 285);
+  --accent: oklch(0.25 0.005 285);
+  --accent-foreground: oklch(0.90 0.005 285);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.30 0.005 285);
+  --input: oklch(0.25 0.005 285);
+  --ring: oklch(0.55 0.19 250);
+  --chart-1: oklch(0.55 0.19 250);
+  --chart-2: oklch(0.60 0.15 250);
+  --chart-3: oklch(0.50 0.20 250);
+  --chart-4: oklch(0.65 0.10 250);
+  --chart-5: oklch(0.45 0.15 250);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.16 0.005 285);
+  --sidebar-foreground: oklch(0.97 0.005 285);
+  --sidebar-primary: oklch(0.55 0.19 250);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.25 0.005 285);
+  --sidebar-accent-foreground: oklch(0.90 0.005 285);
+  --sidebar-border: oklch(0.25 0.005 285);
+  --sidebar-ring: oklch(0.55 0.19 250);
+  --success: oklch(0.55 0.19 250);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.75 0.15 85);
+  --warning-foreground: oklch(0.15 0 0);
+}
+
+.dark {
+  /* Apple Premium Theme - Dark Mode */
+  --background: oklch(0.145 0.005 285);
+  --foreground: oklch(0.97 0.005 285);
+  --card: oklch(0.20 0.005 285);
+  --card-foreground: oklch(0.97 0.005 285);
+  --popover: oklch(0.20 0.005 285);
+  --popover-foreground: oklch(0.97 0.005 285);
+  --primary: oklch(0.55 0.19 250);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.25 0.005 285);
+  --secondary-foreground: oklch(0.90 0.005 285);
+  --muted: oklch(0.25 0.005 285);
+  --muted-foreground: oklch(0.65 0.005 285);
+  --accent: oklch(0.25 0.005 285);
+  --accent-foreground: oklch(0.90 0.005 285);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.30 0.005 285);
+  --input: oklch(0.25 0.005 285);
+  --ring: oklch(0.55 0.19 250);
+  --chart-1: oklch(0.55 0.19 250);
+  --chart-2: oklch(0.60 0.15 250);
+  --chart-3: oklch(0.50 0.20 250);
+  --chart-4: oklch(0.65 0.10 250);
+  --chart-5: oklch(0.45 0.15 250);
+  --sidebar: oklch(0.16 0.005 285);
+  --sidebar-foreground: oklch(0.97 0.005 285);
+  --sidebar-primary: oklch(0.55 0.19 250);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.25 0.005 285);
+  --sidebar-accent-foreground: oklch(0.90 0.005 285);
+  --sidebar-border: oklch(0.25 0.005 285);
+  --sidebar-ring: oklch(0.55 0.19 250);
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback';
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+  
+  html {
+    overflow-x: hidden;
+    overflow-y: auto;
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    overflow-x: hidden;
+    overflow-y: auto;
+    width: 100%;
+    max-width: 100vw;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Dark theme - all text inherits foreground color */
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--foreground);
+  }
+  p, span, label, div {
+    color: inherit;
+  }
+  
+  /* Ensure cards have proper text color for dark theme */
+  [data-slot="card"] {
+    color: var(--card-foreground);
+  }
+  [data-slot="card-title"] {
+    color: var(--card-foreground);
+  }
+  [data-slot="card-description"] {
+    color: var(--muted-foreground);
+  }
+}
+
+/* Marquee Animation for Market Ticker */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Hide scrollbar for market panel horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide v0 branding */
+div[class*="Built with"], 
+[style*="Built with"],
+button[class*="v0"],
+div[class*="v0-branding"],
+svg[class*="v0"],
+a:has(svg):is([class*="v0"], [class*="Built"]) {
+  display: none !important;
+}
+
+div:has(> *:contains("Built with")) {
+  display: none !important;
+}
+
+[data-testid="v0"], 
+[data-testid*="built"],
+[id*="v0"],
+[id*="built"] {
+  display: none !important;
+}

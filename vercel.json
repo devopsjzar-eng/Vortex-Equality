@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/generate-daily-profit",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/expire-profits",
+      "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/monthly-rank-reward",
+      "schedule": "0 1 1 * *"
+    }
+  ]
+}

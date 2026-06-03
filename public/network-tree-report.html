@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pohon Jaringan Network - Vortex Equality</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 { color: #667eea; margin-bottom: 10px; }
+        .header p { color: #666; }
+        .legend {
+            display: flex;
+            gap: 30px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .legend-box {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .real { background-color: #10b981; }
+        .admin { background-color: #ef4444; }
+        .sponsor { background-color: #f59e0b; }
+
+        .tree-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        .sponsor-group {
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .sponsor-group:last-child { border-bottom: none; }
+
+        .sponsor-header {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+        }
+        .sponsor-header .info {
+            display: flex;
+            flex-direction: column;
+        }
+        .sponsor-header .label { font-size: 12px; opacity: 0.9; }
+        .sponsor-header .value { font-size: 14px; font-weight: bold; }
+
+        .members-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-left: 20px;
+        }
+
+        .member-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+        .member-card:hover { 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+
+        .member-card.real-deposit {
+            border-left: 5px solid #10b981;
+            background: #f0fdf4;
+        }
+        .member-card.admin-deposit {
+            border-left: 5px solid #ef4444;
+            background: #fef2f2;
+        }
+
+        .member-name {
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .member-email {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+
+        .member-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+        .stat-value {
+            font-size: 13px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-top: 3px;
+        }
+
+        .deposit-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .deposit-badge.real {
+            background: #dbeafe;
+            color: #0369a1;
+        }
+        .deposit-badge.admin {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .summary {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-top: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .summary h2 { color: #667eea; margin-bottom: 20px; }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .summary-card h3 { font-size: 14px; opacity: 0.9; margin-bottom: 10px; }
+        .summary-card .value { font-size: 28px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Pohon Jaringan Network - Vortex Equality</h1>
+            <p>Visualisasi lengkap struktur sponsor dan member dengan tipe deposit (REAL vs ADMIN)</p>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-box real">✓</div>
+                    <span>Member REAL Deposit (Member transfer sendiri)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box admin">✓</div>
+                    <span>Member ADMIN Deposit (Admin transfer)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box sponsor">✓</div>
+                    <span>Sponsor / Top Sponsor</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="tree-container">
+            <!-- RUDI (ROOT) -->
+            <div class="sponsor-group">
+                <div class="sponsor-header">
+                    <div class="info">
+                        <div class="label">TOP SPONSOR (ROOT)</div>
+                        <div class="value">Rudi</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Email</div>
+                        <div class="value">vortex2026saham@gmail.com</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Direct Members</div>
+                        <div class="value">4 orang</div>
+                    </div>
+                </div>
+                <div class="members-list">
+                    <!-- Aqlan 1 -->
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Aqlan</div>
+                        <div class="member-email">aqlansiregar9@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$2,780</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$2,964.31</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                    <!-- Aqlan 2 -->
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Aqlan</div>
+                        <div class="member-email">aqlanazelsiregar@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$850</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$865.57</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                    <!-- Rudi Ricardo -->
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Rudi Ricardo</div>
+                        <div class="member-email">sultanpekanbaru573@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$2,410</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$2,298.15</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RUDI RICARDO (LEVEL 1) -->
+            <div class="sponsor-group">
+                <div class="sponsor-header">
+                    <div class="info">
+                        <div class="label">LEVEL 1 SPONSOR</div>
+                        <div class="value">Rudi Ricardo</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Email</div>
+                        <div class="value">sultanpekanbaru573@gmail.com</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Direct Members</div>
+                        <div class="value">11 orang</div>
+                    </div>
+                </div>
+                <div class="members-list">
+                    <!-- Members -->
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Aigayanti</div>
+                        <div class="member-email">aigayanti1972@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$124</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$131.88</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Baik Martua</div>
+                        <div class="member-email">baiksihite@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$54</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$58.25</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Siregar</div>
+                        <div class="member-email">elmiharahap56@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$2,548</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$2,730.04</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Lilis Ribkayani</div>
+                        <div class="member-email">pkanbaru5@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$500</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$536.25</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Tiodorlan nurjannah</div>
+                        <div class="member-email">tiodorlannurjannah@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$118</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$125.66</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Wibowo Utomo</div>
+                        <div class="member-email">indolivegood01@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$50</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$51.10</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SIREGAR (LEVEL 2) -->
+            <div class="sponsor-group">
+                <div class="sponsor-header">
+                    <div class="info">
+                        <div class="label">LEVEL 2 SPONSOR</div>
+                        <div class="value">Siregar</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Email</div>
+                        <div class="value">elmiharahap56@gmail.com</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Direct Members</div>
+                        <div class="value">5 orang</div>
+                    </div>
+                </div>
+                <div class="members-list">
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Neni triani</div>
+                        <div class="member-email">marugami93@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$1,000</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$1,000</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Tiolan lumbanraja</div>
+                        <div class="member-email">tiolanlumbanraja4@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$285</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$306.68</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Tio</div>
+                        <div class="member-email">sitompultioria14@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$50</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$52.52</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">YusnanVortex</div>
+                        <div class="member-email">yusnanunan274@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$101.20</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$107.86</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AIGAYANTI (LEVEL 2) -->
+            <div class="sponsor-group">
+                <div class="sponsor-header">
+                    <div class="info">
+                        <div class="label">LEVEL 2 SPONSOR</div>
+                        <div class="value">Aigayanti</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Email</div>
+                        <div class="value">aigayanti1972@gmail.com</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Direct Members</div>
+                        <div class="value">6 orang</div>
+                    </div>
+                </div>
+                <div class="members-list">
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Aida Anggraini</div>
+                        <div class="member-email">aidaanggarainikulim@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$860</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$912.40</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Aigayanti</div>
+                        <div class="member-email">aigayantiahmad@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$500</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$519.66</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Meutya Herlina</div>
+                        <div class="member-email">mety.herlina@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$117</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$125.23</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Susi Tarmizi</div>
+                        <div class="member-email">basyariahh@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$53</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$56.11</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Wan harnawainy</div>
+                        <div class="member-email">wanharnawainy2026@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$860</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$885.51</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MARIKA VEROLINA (LEVEL 1) -->
+            <div class="sponsor-group">
+                <div class="sponsor-header">
+                    <div class="info">
+                        <div class="label">LEVEL 1 SPONSOR</div>
+                        <div class="value">Marika verolina</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Email</div>
+                        <div class="value">marikaverolina497@gmail.com</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Direct Members</div>
+                        <div class="value">8 orang</div>
+                    </div>
+                </div>
+                <div class="members-list">
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Jenni lusi panjaitan</div>
+                        <div class="member-email">jennilusipanjaitan@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$50</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$50.85</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Muhammad Shalikhin</div>
+                        <div class="member-email">shalikhin05@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$50</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$0</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MULATSIH (LEVEL 2) -->
+            <div class="sponsor-group">
+                <div class="sponsor-header">
+                    <div class="info">
+                        <div class="label">LEVEL 2 SPONSOR</div>
+                        <div class="value">Mulatsih</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Email</div>
+                        <div class="value">asihvivoy12@gmail.com</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Direct Members</div>
+                        <div class="value">4 orang</div>
+                    </div>
+                </div>
+                <div class="members-list">
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Marika verolina</div>
+                        <div class="member-email">marikaverolina497@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$50</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$50.60</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Trimurti</div>
+                        <div class="member-email">trimurti232323@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$50</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$51.10</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Zulfitria Wati</div>
+                        <div class="member-email">ratukayo9@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$100</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$100.60</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LILIS RIBKAYANI (LEVEL 2) -->
+            <div class="sponsor-group">
+                <div class="sponsor-header">
+                    <div class="info">
+                        <div class="label">LEVEL 2 SPONSOR</div>
+                        <div class="value">Lilis Ribkayani</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Email</div>
+                        <div class="value">pkanbaru5@gmail.com</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Direct Members</div>
+                        <div class="value">3 orang</div>
+                    </div>
+                </div>
+                <div class="members-list">
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Alexius Ngkahar</div>
+                        <div class="member-email">alexiusngkahar@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$50</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$53.21</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Irwansyah</div>
+                        <div class="member-email">ddafi27@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$52</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$52.62</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Yayat Nurhayati</div>
+                        <div class="member-email">dollarraja110@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$300</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$318.25</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUSI TARMIZI (LEVEL 3) -->
+            <div class="sponsor-group">
+                <div class="sponsor-header">
+                    <div class="info">
+                        <div class="label">LEVEL 3 SPONSOR</div>
+                        <div class="value">Susi Tarmizi</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Email</div>
+                        <div class="value">basyariahh@gmail.com</div>
+                    </div>
+                    <div class="info">
+                        <div class="label">Direct Members</div>
+                        <div class="value">3 orang</div>
+                    </div>
+                </div>
+                <div class="members-list">
+                    <div class="member-card admin-deposit">
+                        <div class="member-name">Eltamizul</div>
+                        <div class="member-email">mizulelta@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$50</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$53.12</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge admin">ADMIN DEPOSIT</div>
+                    </div>
+                    <div class="member-card real-deposit">
+                        <div class="member-name">Mulatsih</div>
+                        <div class="member-email">asihvivoy12@gmail.com</div>
+                        <div class="member-stats">
+                            <div class="stat">
+                                <div class="stat-label">Deposit</div>
+                                <div class="stat-value">$145</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-label">Wallet</div>
+                                <div class="stat-value">$53.89</div>
+                            </div>
+                        </div>
+                        <div class="deposit-badge real">REAL DEPOSIT</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUMMARY -->
+        <div class="summary">
+            <h2>RINGKASAN AUDIT NETWORK</h2>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h3>Total Sponsor</h3>
+                    <div class="value">9</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Total Members</h3>
+                    <div class="value">54</div>
+                </div>
+                <div class="summary-card">
+                    <h3>REAL Deposits</h3>
+                    <div class="value">32</div>
+                </div>
+                <div class="summary-card">
+                    <h3>ADMIN Deposits</h3>
+                    <div class="value">22</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
