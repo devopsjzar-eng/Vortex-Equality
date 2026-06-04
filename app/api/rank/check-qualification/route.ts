@@ -7,13 +7,16 @@ async function calculateGroupOmset(supabaseAdmin: ReturnType<typeof getSupabaseA
   if (visited.has(userId)) return 0
   visited.add(userId)
   
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('total_deposit')
-    .eq('id', userId)
+  // OMZET DIHITUNG DARI MURNI DEPOSIT AKTIF (Tanpa profit), 
+  // Jika WD ditarik, ini akan berkurang otomatis.
+  const { data: wallet } = await supabaseAdmin
+    .from('wallets')
+    .select('initial_capital')
+    .eq('user_id', userId)
+    .eq('wallet_type', 'asset')
     .single()
   
-  let total = parseFloat(profile?.total_deposit || '0')
+  let total = parseFloat(wallet?.initial_capital || '0')
   
   const { data: downlines } = await supabaseAdmin
     .from('profiles')
@@ -58,14 +61,15 @@ async function checkRankQualification(supabaseAdmin: ReturnType<typeof getSupaba
   
   if (!profile) return null
   
+  // Syarat Personal Asset harus dari deposit aktif, BUKAN dari profit di balance
   const { data: wallet } = await supabaseAdmin
     .from('wallets')
-    .select('balance')
+    .select('initial_capital')
     .eq('user_id', userId)
     .eq('wallet_type', 'asset')
     .single()
   
-  const personalAsset = parseFloat(wallet?.balance || '0')
+  const personalAsset = parseFloat(wallet?.initial_capital || '0')
   
   const { count: directCount } = await supabaseAdmin
     .from('profiles')
