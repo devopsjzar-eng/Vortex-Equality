@@ -45,9 +45,9 @@ export async function POST(request: Request) {
         .from('daily_profits')
         .insert({
           profit_date: profitDate,
-          global_profit_percentage: globalPercentage,
-          member_share: memberShare,
-          company_share: companyShare,
+          global_profit_percentage: Number(globalPercentage.toFixed(4)),
+          member_share: Number(memberShare.toFixed(2)),
+          company_share: Number(companyShare.toFixed(2)),
           distribution_time: new Date().toISOString(),
         })
         .select()
