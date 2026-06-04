@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { 
   DollarSign, 
   Users, 
@@ -194,6 +196,34 @@ export default function AdminOverviewPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* MANUAL PROFIT TRIGGER BOX */}
+      <Card className="border-blue-500/50 bg-blue-500/10 mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-blue-500 text-lg flex items-center gap-2">
+            <Gift className="h-5 w-5" /> Manual Daily Profit Trigger
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-end gap-4">
+          <div className="space-y-1 w-48">
+            <label className="text-xs text-muted-foreground font-medium">Profit Rate (%)</label>
+            <Input 
+              type="number" 
+              step="0.1"
+              value={profitRateInput} 
+              onChange={(e) => setProfitRateInput(e.target.value)} 
+              className="font-bold text-lg bg-background"
+            />
+          </div>
+          <Button 
+            onClick={handleTriggerProfit} 
+            disabled={triggeringProfit}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+          >
+            {triggeringProfit ? 'Membagikan...' : 'SEBARKAN PROFIT SEKARANG'}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Main Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
