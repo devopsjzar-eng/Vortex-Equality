@@ -267,11 +267,11 @@ export default function DepositPage() {
                         : 'bg-[#1D1D1F] border-[#333336] hover:border-[#55555A]'
                     }`}
                   >
-                    <div className="flex-shrink-0 bg-white p-1 rounded-full">
-                      <img src={crypto.logo} alt={crypto.symbol} className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <div className="flex-shrink-0 bg-white p-1.5 rounded-full shadow-sm">
+                      <img src={crypto.logo} alt={crypto.symbol} className="w-6 h-6 sm:w-8 sm:h-8 object-contain" />
                     </div>
                     <div>
-                      <p className={`font-semibold text-sm ${selectedCrypto === crypto.symbol ? 'text-[#F5F5F7]' : 'text-[#A1A1A6]'}`}>
+                      <p className={`font-semibold text-sm sm:text-base ${selectedCrypto === crypto.symbol ? 'text-[#F5F5F7]' : 'text-[#A1A1A6]'}`}>
                         {crypto.symbol.replace('TRC20', '').replace('BSC', '')}
                       </p>
                       <p className={`text-[10px] sm:text-xs ${selectedCrypto === crypto.symbol ? 'text-[#86868B]' : 'text-[#55555A]'}`}>
@@ -281,8 +281,8 @@ export default function DepositPage() {
                     
                     {selectedCrypto === crypto.symbol && (
                       <div className="ml-auto">
-                        <div className="bg-[#0071E3] rounded-full p-0.5">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <div className="bg-[#34C759] rounded-full p-0.5 shadow-md">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         </div>
                       </div>
                     )}

@@ -359,18 +359,18 @@ export default function WithdrawPage() {
                       : 'bg-[#1D1D1F] border-[#333336] hover:border-[#55555A]'
                   )}
                 >
-                  <div className="bg-white p-1.5 rounded-full mb-2 relative">
-                    <img src={net.logo} alt={net.name} className="w-5 h-5 object-contain" />
+                  <div className="bg-white p-2 rounded-full mb-2 relative shadow-sm">
+                    <img src={net.logo} alt={net.name} className="w-6 h-6 object-contain" />
                     
                     {selectedNetwork === net.id && (
-                      <div className="absolute -top-1 -right-1 bg-[#0071E3] rounded-full p-0.5 border-2 border-[#2C2C2E]">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      <div className="absolute -top-1 -right-1 bg-[#34C759] rounded-full p-0.5 border-2 border-[#2C2C2E] shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
                       </div>
                     )}
                   </div>
                   
                   <span className={cn(
-                    'text-xs font-semibold',
+                    'text-xs sm:text-sm font-semibold mt-1',
                     selectedNetwork === net.id ? 'text-[#F5F5F7]' : 'text-[#A1A1A6]'
                   )}>
                     {net.name}
