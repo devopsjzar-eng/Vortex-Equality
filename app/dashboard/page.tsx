@@ -624,7 +624,7 @@ export default function DashboardPage() {
             )}
             
             {/* LOCKED BUTTON (Before 10 AM) */}
-            {!isProfitTime && !todayProfit && (
+            {!isProfitTime && todayProfit?.status !== 'claimed' && (
               <div className="flex flex-col gap-2 w-full md:w-auto">
                 <Button 
                   size="lg" 
