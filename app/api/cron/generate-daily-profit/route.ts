@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 
     // Generate FIXED profit rate - acak pilih dari [1%, 1.1%, 1.2%, 1.3%]
     // Profit diberikan 100% ke member, tidak ada profit sharing
-    const DAILY_RATES = [1.0, 1.1, 1.2, 1.3] // Fixed rates only
+    const DAILY_RATES = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5] // Fixed rates only
     const selectedRate = DAILY_RATES[Math.floor(Math.random() * DAILY_RATES.length)]
     const globalProfitPercentage = parseFloat((selectedRate / 100).toFixed(4)) // e.g., 0.01 = 1%
     
@@ -79,35 +79,33 @@ export async function GET(request: Request) {
         continue
       }
 
-      const assetBalance = wallet.initial_capital || wallet.balance || 0
+      // MENGGUNAKAN WALLET BALANCE SEBAGAI BASIS AUTO-COMPOUND (SESUAI PRIORITAS 1)
+      const assetBalance = wallet.balance || 0
       if (assetBalance <= 0) {
         skipped++
         continue
       }
 
-      // Check ROI cap (400% = 4x modal awal)
-      // Jika sudah 400%, tidak generate profit lagi sampai reinvest
-      const initialCapital = wallet.initial_capital || 0
+      // Check ROI cap (400% = 300% profit bersih + Modal 100%)
+      // Active Capital adalah initial_capital (modal deposit murni)
+      const activeCapital = wallet.initial_capital || 0
       const totalProfitEarned = wallet.total_profit_earned || 0
-      const maxROI = initialCapital * 4  // 400% dari modal awal
+      const maxROI = activeCapital * 3  // 300% batas profit murni (total asset menjadi 400%)
       
       if (totalProfitEarned >= maxROI) {
         skipped++
-        console.log(`[Profit] Skipped member ${member.id} - ROI 400% reached (earned: $${totalProfitEarned}, max: $${maxROI})`)
+        console.log(`[Profit] Skipped member ${member.id} - ROI 400% reached (earned: ${totalProfitEarned}, max: ${maxROI})`)
         continue // Skip - ROI cap reached, perlu reinvest
       }
 
-      // Calculate profit with marketing plan
-      // Member dapat 100% dari global daily rate (1% - 1.3%)
-      const basePercentage = globalProfitPercentage * 100 // e.g., 0.01 * 100 = 1%
+      // Calculate profit with marketing plan (Auto-Compound dari Wallet Balance)
+      const basePercentage = globalProfitPercentage * 100 
       
-      // Strategic Booster: +0.2% per qualifying referral (max 3.0%)
-      const strategicBooster = member.strategic_booster || 0
+      // STRATEGIC BOOSTER DIHAPUS (SESUAI INSTRUKSI OWNER)
+      const strategicBooster = 0
+      const totalPercentage = basePercentage
       
-      // Total percentage = base + strategic booster
-      const totalPercentage = basePercentage + strategicBooster
-      
-      // Calculate member profit from initial_capital (modal awal)
+      // Calculate member profit dari Wallet Balance (Auto-Compound)
       const memberProfit = assetBalance * (totalPercentage / 100)
 
       // Check if already generated today
