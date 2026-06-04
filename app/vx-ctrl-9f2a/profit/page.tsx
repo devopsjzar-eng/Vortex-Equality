@@ -162,90 +162,36 @@ export default function ProfitControlPage() {
   }, [fetchData])
 
   const generateDailyProfit = async (percentage?: number) => {
+    const rateToUse = percentage || parseFloat(customPercentage) || null;
+    
+    if (!confirm(`Anda yakin ingin MEMBAGIKAN PROFIT ${rateToUse ? rateToUse + '%' : 'ACAK'} ke seluruh member SEKARANG?`)) {
+      return
+    }
+
     setGenerating(true)
     setMessage(null)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        // Demo mode
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        const rate = percentage || parseFloat((Math.random() * (2 - 1) + 1).toFixed(2))
-        setTodayRate(rate)
-        setMessage({ type: 'success', text: `[DEMO] Daily profit ${rate}% generated successfully!` })
-        setCustomPercentage('')
-        setGenerating(false)
-        return
-      }
-
-      // Generate profit rate (1-2% random or custom)
-      const baseRate = percentage ? percentage / 100 : (Math.random() * 0.01 + 0.01) // 0.01 to 0.02
-      const today = new Date()
-      const profitDate = today.toISOString().split('T')[0]
-      
-      // Set expiry to 23:59:59 today
-      const expiresAt = new Date(today)
-      expiresAt.setHours(23, 59, 59, 999)
-
-      // Get all eligible members (asset_wallet > 0, not reached ROI cap)
-      const { data: members, error: membersError } = await supabase
-        .from('profiles')
-        .select('id, asset_wallet, total_deposit, total_earned')
-        .eq('is_admin', false)
-        .gt('asset_wallet', 0)
-
-      if (membersError) throw membersError
-
-      let generated = 0
-      let skipped = 0
-
-      for (const member of members || []) {
-        // Check ROI cap (400%)
-        const roiCap = 4.0
-        const maxEarnings = (member.total_deposit || 0) * roiCap
-        if ((member.total_earned || 0) >= maxEarnings) {
-          skipped++
-          continue
-        }
-
-        // Calculate rates - no booster anymore
-        const totalRate = baseRate
-        const profitAmount = member.asset_wallet * totalRate
-
-        // Upsert profit claim
-        const { error: upsertError } = await supabase
-          .from('profit_claims')
-          .upsert({
-            user_id: member.id,
-            profit_date: profitDate,
-            base_rate: baseRate,
-            booster_rate: 0,
-            total_rate: totalRate,
-            eligible_amount: member.asset_wallet,
-            profit_amount: profitAmount,
-            status: 'available',
-            expires_at: expiresAt.toISOString()
-          }, { 
-            onConflict: 'user_id,profit_date',
-            ignoreDuplicates: false 
-          })
-
-        if (!upsertError) {
-          generated++
-        }
-      }
-
-      setMessage({ 
-        type: 'success', 
-        text: `Daily profit ${(baseRate * 100).toFixed(2)}% generated for ${generated} members (${skipped} skipped - ROI cap reached)` 
+      // Connects directly to the new secure API we just built!
+      const payload = rateToUse ? { rate: rateToUse } : {}
+      const response = await fetch('/api/admin/trigger-profit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       })
-      setCustomPercentage('')
-      fetchData()
+      
+      const data = await response.json()
 
+      if (response.ok && data.success) {
+        setMessage({ type: 'success', text: data.message || 'Profit berhasil disebarkan!' })
+        fetchData()
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to generate profit' })
+      }
+      setCustomPercentage('')
     } catch (error) {
-      console.error('Error generating profit:', error)
-      setMessage({ type: 'error', text: 'Failed to generate daily profit' })
+      console.error('Error triggering profit:', error)
+      setMessage({ type: 'error', text: 'Failed to trigger profit generation' })
     } finally {
       setGenerating(false)
     }
