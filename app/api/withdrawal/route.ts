@@ -243,7 +243,21 @@ export async function POST(request: NextRequest) {
       // Fetch Modal Aktif dari wallet (ini direset saat top up, jadi lebih akurat)
       const activeCapital = Number(wallet.initial_capital || 0)
       
-      // Hitung total semua withdrawal sukses/pending dari Asset Wallet
+      // Cari tanggal deposit/top-up TERAKHIR member ini
+      const { data: lastDeposit } = await supabaseAdmin
+        .from('transactions')
+        .select('created_at')
+        .eq('user_id', user.id)
+        .eq('type', 'deposit')
+        .eq('status', 'success')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+        
+      const lastDepositDate = lastDeposit?.created_at || '2000-01-01T00:00:00.000Z'
+
+      // Hitung total withdrawal SUKSES/PENDING HANYA SETELAH top-up terakhir
+      // Ini memastikan fee kembali ke 20% setiap kali ada top-up baru
       const { data: pastWithdrawals } = await supabaseAdmin
         .from('transactions')
         .select('amount')
@@ -251,6 +265,7 @@ export async function POST(request: NextRequest) {
         .eq('wallet_type', 'asset')
         .eq('type', 'withdrawal')
         .in('status', ['success', 'pending'])
+        .gte('created_at', lastDepositDate)
         
       const totalWithdrawn = pastWithdrawals?.reduce((sum, tx) => sum + Number(tx.amount || 0), 0) || 0
       
