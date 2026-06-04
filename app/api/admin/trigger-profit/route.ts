@@ -9,6 +9,24 @@ function getSupabaseAdmin() {
   )
 }
 
+export async function GET(request: Request) {
+  try {
+    const supabaseAdmin = getSupabaseAdmin()
+    const today = new Date()
+    const profitDate = today.toISOString().split('T')[0]
+    
+    // Wipe all profit claims for today
+    await supabaseAdmin.from('profit_claims').delete().gte('created_at', `${profitDate}T00:00:00`)
+    
+    // Wipe daily_profits for today
+    await supabaseAdmin.from('daily_profits').delete().eq('profit_date', profitDate)
+    
+    return NextResponse.json({ success: true, message: "Sampah profit 2% hari ini berhasil dibersihkan!" })
+  } catch(e) {
+    return NextResponse.json({ error: e.message })
+  }
+}
+
 export async function POST(request: Request) {
   try {
     // 1. Parse manual rate from request
