@@ -23,12 +23,12 @@ import { cn } from '@/lib/utils'
 const MIN_WITHDRAWAL = 10
 
 const networkOptions = [
-  { id: 'bep20',     name: 'BEP20 (BSC)',       desc: 'Binance Smart Chain' },
-  { id: 'trc20',     name: 'TRC20 (TRON)',       desc: 'TRON Network'       },
-  { id: 'erc20',     name: 'ERC20 (Ethereum)',   desc: 'Ethereum Network'   },
-  { id: 'polygon',   name: 'Polygon (MATIC)',    desc: 'Polygon Network'    },
-  { id: 'arbitrum',  name: 'Arbitrum',           desc: 'Arbitrum One'       },
-  { id: 'optimism',  name: 'Optimism',           desc: 'Optimism Network'   },
+  { id: 'bep20',     name: 'BEP20 (BSC)',       desc: 'Binance Smart Chain', logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=029' },
+  { id: 'trc20',     name: 'TRC20 (TRON)',      desc: 'TRON Network',        logo: 'https://cryptologos.cc/logos/tron-trx-logo.svg?v=029' },
+  { id: 'erc20',     name: 'ERC20 (Ethereum)',  desc: 'Ethereum Network',    logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=029' },
+  { id: 'polygon',   name: 'Polygon (MATIC)',   desc: 'Polygon Network',     logo: 'https://cryptologos.cc/logos/polygon-matic-logo.svg?v=029' },
+  { id: 'arbitrum',  name: 'Arbitrum',          desc: 'Arbitrum One',        logo: 'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=029' },
+  { id: 'optimism',  name: 'Optimism',          desc: 'Optimism Network',    logo: 'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg?v=029' },
 ]
 
 export default function WithdrawPage() {
@@ -345,27 +345,42 @@ export default function WithdrawPage() {
           </div>
 
           {/* Network */}
-          <div className="space-y-2">
-            <Label className="text-slate-300">Network USDT</Label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="space-y-3">
+            <Label className="text-white font-medium">Select Network</Label>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {networkOptions.map((net) => (
                 <button
                   key={net.id}
                   onClick={() => setSelectedNetwork(net.id)}
                   className={cn(
-                    'flex flex-col rounded-xl border-2 p-3 text-left transition-all',
+                    'relative flex flex-col items-center text-center justify-center rounded-xl border-2 p-4 transition-all duration-300 overflow-hidden',
                     selectedNetwork === net.id
-                      ? 'border-primary bg-primary/10'
-                      : 'border-slate-700 bg-slate-800 hover:border-slate-600'
+                      ? 'border-blue-500 bg-gradient-to-b from-blue-900/40 to-blue-600/10 shadow-[0_0_15px_rgba(59,130,246,0.3)] scale-[1.02]'
+                      : 'border-slate-700 bg-slate-800/80 hover:border-slate-500 hover:bg-slate-700'
                   )}
                 >
+                  {selectedNetwork === net.id && (
+                    <div className="absolute inset-0 bg-blue-500/5 blur-xl rounded-xl" />
+                  )}
+                  
+                  <div className="bg-white/10 p-2 rounded-full mb-2 z-10">
+                    <img src={net.logo} alt={net.name} className="w-6 h-6 object-contain" />
+                  </div>
+                  
                   <span className={cn(
-                    'text-xs font-bold',
-                    selectedNetwork === net.id ? 'text-primary' : 'text-white'
+                    'text-xs font-bold z-10',
+                    selectedNetwork === net.id ? 'text-white' : 'text-slate-300'
                   )}>
                     {net.name}
                   </span>
-                  <span className="text-[10px] text-slate-500 mt-0.5">{net.desc}</span>
+                  
+                  {selectedNetwork === net.id && (
+                    <div className="absolute top-2 right-2">
+                      <div className="bg-blue-500 rounded-full p-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      </div>
+                    </div>
+                  )}
                 </button>
               ))}
             </div>

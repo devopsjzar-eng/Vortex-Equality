@@ -249,26 +249,49 @@ export default function DepositPage() {
             {/* Crypto Selection */}
             <div>
               <label className="text-white font-medium mb-2 block">Select Cryptocurrency</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 {[
-                  { symbol: 'BTC', name: 'Bitcoin' },
-                  { symbol: 'ETH', name: 'Ethereum' },
-                  { symbol: 'USDTTRC20', name: 'USDT (TRC20)' },
-                  { symbol: 'USDTBSC', name: 'USDT (BEP20)' },
-                  { symbol: 'BNB', name: 'BNB (BSC)' },
-                  { symbol: 'LTC', name: 'Litecoin' }
+                  { symbol: 'BTC', name: 'Bitcoin', logo: 'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=029' },
+                  { symbol: 'ETH', name: 'Ethereum', logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=029' },
+                  { symbol: 'USDTTRC20', name: 'USDT (TRC20)', logo: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=029' },
+                  { symbol: 'USDTBSC', name: 'USDT (BEP20)', logo: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=029' },
+                  { symbol: 'BNB', name: 'BNB (BSC)', logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=029' },
+                  { symbol: 'LTC', name: 'Litecoin', logo: 'https://cryptologos.cc/logos/litecoin-ltc-logo.svg?v=029' }
                 ].map((crypto) => (
                   <button
                     key={crypto.symbol}
                     onClick={() => setSelectedCrypto(crypto.symbol)}
-                    className={`p-4 rounded-xl text-left transition-all duration-200 border-2 ${
+                    className={`relative flex items-center gap-3 p-3 sm:p-4 rounded-xl text-left transition-all duration-300 border-2 overflow-hidden ${
                       selectedCrypto === crypto.symbol
-                        ? 'bg-blue-600 text-white border-blue-400 shadow-lg shadow-blue-500/50 scale-105'
-                        : 'bg-slate-800 text-slate-200 border-slate-700 hover:border-blue-500 hover:bg-slate-700/80 hover:text-white'
+                        ? 'bg-gradient-to-br from-blue-900/40 to-blue-600/20 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-[1.02]'
+                        : 'bg-slate-800/80 text-slate-200 border-slate-700 hover:border-slate-500 hover:bg-slate-700'
                     }`}
                   >
-                    <p className="font-semibold">{crypto.symbol.replace('TRC20', '').replace('BSC', '')}</p>
-                    <p className="text-xs text-slate-400">{crypto.name}</p>
+                    {/* Glowing effect inside selected button */}
+                    {selectedCrypto === crypto.symbol && (
+                      <div className="absolute inset-0 bg-blue-500/10 blur-xl rounded-xl" />
+                    )}
+                    
+                    <div className="flex-shrink-0 bg-white/10 p-1.5 sm:p-2 rounded-full z-10">
+                      <img src={crypto.logo} alt={crypto.symbol} className="w-6 h-6 sm:w-8 sm:h-8" />
+                    </div>
+                    <div className="z-10">
+                      <p className={`font-bold ${selectedCrypto === crypto.symbol ? 'text-white' : 'text-slate-300'}`}>
+                        {crypto.symbol.replace('TRC20', '').replace('BSC', '')}
+                      </p>
+                      <p className={`text-[10px] sm:text-xs ${selectedCrypto === crypto.symbol ? 'text-blue-200' : 'text-slate-500'}`}>
+                        {crypto.name}
+                      </p>
+                    </div>
+                    
+                    {/* Checkmark for selected */}
+                    {selectedCrypto === crypto.symbol && (
+                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
+                        <div className="bg-blue-500 rounded-full p-0.5">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
