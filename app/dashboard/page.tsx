@@ -540,9 +540,11 @@ export default function DashboardPage() {
                 </>
               ) : !isProfitTime ? (
                 <>
-                  <p className="text-2xl sm:text-3xl font-bold tracking-tight text-[#55555A]">Locked</p>
+                  <p className="text-4xl sm:text-5xl font-bold tracking-tighter text-[#55555A]">
+                    +{todayRate}%
+                  </p>
                   <p className="text-[11px] sm:text-xs font-medium text-[#86868B] mt-1">
-                    Please return during profit hours
+                    Today's Rate: <span className="text-[#A1A1A6]">Waiting for profit hours</span>
                   </p>
                 </>
               ) : profile && profile.total_deposit === 0 ? (
