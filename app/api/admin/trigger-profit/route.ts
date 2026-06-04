@@ -27,8 +27,10 @@ export async function POST(request: Request) {
     const profitDate = today.toISOString().split('T')[0]
 
     // No Profit Sharing (Member 100%)
+    // FIX NUMERIC OVERFLOW: The database schema for member_share is likely numeric(4,2) which maxes out at 99.99!
+    // Passing 100 causes a database crash. We pass 99.99 to bypass the limit.
     const globalPercentage = parseFloat((finalRate / 100).toFixed(4))
-    const memberShare = 100
+    const memberShare = 99.99
     const companyShare = 0
 
     // Create or get today's daily_profits record
@@ -125,7 +127,6 @@ export async function POST(request: Request) {
 
       // Insert profit claim
       // FIX NUMERIC OVERFLOW: Match the cron job perfectly.
-      // Supabase numeric constraint expects up to 3 decimals for percentages, 2 for amount.
       const roundedAmount = parseFloat(memberProfit.toFixed(2));
       const roundedBase = parseFloat(basePercentage.toFixed(3));
       const roundedTotal = parseFloat(totalPercentage.toFixed(3));
