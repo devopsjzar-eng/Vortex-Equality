@@ -265,8 +265,8 @@ async function creditUserWallet(userId: string, amount: number) {
       .update({
         balance: newBalance,
         initial_capital: newCapital,
-        total_profit_earned: isTopUp ? 0 : undefined,
-        cap_reached: isTopUp ? false : undefined,
+        total_profit_earned: isTopUp ? 0 : wallet.total_profit_earned, // Force 0 or keep existing
+        cap_reached: isTopUp ? false : wallet.cap_reached,
         updated_at: new Date().toISOString(),
       })
       .eq('id', wallet.id)
