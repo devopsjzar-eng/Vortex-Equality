@@ -128,7 +128,10 @@ export async function GET(request: Request) {
 
     if (existingDailyProfit) {
       dailyProfitId = existingDailyProfit.id
-      globalProfitPercentage = existingDailyProfit.global_profit_percentage
+      // Fix ghost bug: If database holds old fraction data (0.015), convert it to 1.50
+      globalProfitPercentage = existingDailyProfit.global_profit_percentage < 0.1 && existingDailyProfit.global_profit_percentage > 0 
+        ? existingDailyProfit.global_profit_percentage * 100 
+        : existingDailyProfit.global_profit_percentage
     } else {
       // Create new daily_profit record with random rate
       const randomRate = Math.random() * 0.01 + 0.01 // 1% to 2%

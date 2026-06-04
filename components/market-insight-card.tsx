@@ -116,7 +116,7 @@ export function MarketInsightCard({ profitRate, className }: MarketInsightProps)
             <div>
               <p className="text-xs text-slate-400 mb-1">Today&apos;s Trading Performance</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-white">+{profitRate.toFixed(2)}%</span>
+                <span className="text-2xl font-bold text-white">+{profitRate < 0.1 ? (profitRate * 100).toFixed(2) : profitRate.toFixed(2)}%</span>
                 <span className="flex items-center gap-0.5 text-xs text-emerald-400">
                   <TrendingUp className="h-3 w-3" />
                   Above target
