@@ -240,22 +240,27 @@ export async function POST(request: NextRequest) {
         .eq('id', user.id)
         .single()
       
-      const totalDeposit = profile?.total_deposit || 0
+      // Fetch Modal Aktif dari wallet (ini direset saat top up, jadi lebih akurat)
+      const activeCapital = Number(wallet.initial_capital || 0)
       
-      // Calculate profit percentage: (current_balance - total_deposit) / total_deposit
-      let profitPercentage = 0
-      if (totalDeposit > 0) {
-        profitPercentage = ((wallet.balance - totalDeposit) / totalDeposit) * 100
-      }
+      // Hitung total semua withdrawal sukses/pending dari Asset Wallet
+      const { data: pastWithdrawals } = await supabaseAdmin
+        .from('transactions')
+        .select('amount')
+        .eq('user_id', user.id)
+        .eq('wallet_type', 'asset')
+        .eq('type', 'withdrawal')
+        .in('status', ['success', 'pending'])
+        
+      const totalWithdrawn = pastWithdrawals?.reduce((sum, tx) => sum + Number(tx.amount || 0), 0) || 0
       
       // Fee logic:
-      // - If profit >= 100% (balance >= total_deposit × 2): fee 5%
-      // - If profit < 100%: fee 20%
-      if (profitPercentage >= 100) {
-        // User has reached 100% profit (balik modal) - 5% fee
+      // BEP 100% diukur dari: Apakah total uang yang sudah dia WD >= Modal aktif dia?
+      if (activeCapital > 0 && totalWithdrawn >= activeCapital) {
+        // Sudah BEP (Balik Modal) - fee turun jadi 5%
         feePercentage = 5
       } else {
-        // User hasn't reached 100% profit yet - 20% fee
+        // Belum BEP - fee 20%
         feePercentage = 20
       }
     }
