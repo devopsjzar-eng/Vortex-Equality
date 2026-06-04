@@ -625,16 +625,16 @@ export default function DashboardPage() {
               </Button>
             )}
             
-            {/* LOCKED BUTTON (Before 10 AM) */}
+            {/* WAITING BUTTON (Before 10 AM) - No Lock Icon */}
             {!isProfitTime && todayProfit?.status !== 'claimed' && (
               <div className="flex flex-col gap-2 w-full md:w-auto">
                 <Button 
                   size="lg" 
                   disabled
-                  className="bg-[#2C2C2E] text-[#86868B] font-bold text-sm sm:text-base px-10 py-7 h-auto rounded-[20px] opacity-100 select-none cursor-not-allowed border border-[#333336]"
+                  className="bg-[#2C2C2E] text-[#A1A1A6] font-bold text-sm sm:text-base px-10 py-7 h-auto rounded-[20px] opacity-100 select-none cursor-not-allowed border border-[#333336]"
                 >
                   <span className="flex items-center justify-center gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-clock"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     <span>OPENS AT 10:00 AM WIB</span>
                   </span>
                 </Button>
