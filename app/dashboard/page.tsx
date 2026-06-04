@@ -69,6 +69,7 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [assetBalance, setAssetBalance] = useState(0)
+  const [assetWallet, setAssetWallet] = useState<any>(null)
   const [bonusBalance, setBonusBalance] = useState(0)
   const [todayProfit, setTodayProfit] = useState<ProfitClaim | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -155,7 +156,9 @@ export default function DashboardPage() {
       
       if (profileRes.data) setProfile(profileRes.data)
       if (walletsRes.data) {
-        setAssetBalance(walletsRes.data.find(w => w.wallet_type === 'asset')?.balance || 0)
+        const assetW = walletsRes.data.find(w => w.wallet_type === 'asset')
+        setAssetWallet(assetW)
+        setAssetBalance(assetW?.balance || 0)
         setBonusBalance(walletsRes.data.find(w => w.wallet_type === 'bonus')?.balance || 0)
       }
       if (transactionsRes.data) setTransactions(transactionsRes.data)
@@ -304,8 +307,8 @@ export default function DashboardPage() {
 
   // Calculate ROI percentage using actual profit earned vs active capital
   // Modal Aktif = wallet.initial_capital
-  const activeCapital = assetWalletData?.initial_capital || 0
-  const actualProfitEarned = assetWalletData?.total_profit_earned || 0
+  const activeCapital = assetWallet?.initial_capital || 0
+  const actualProfitEarned = assetWallet?.total_profit_earned || 0
   
   const roiPercentage = activeCapital > 0 
     ? (actualProfitEarned / activeCapital) * 100 
