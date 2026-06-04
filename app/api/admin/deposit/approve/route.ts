@@ -107,13 +107,13 @@ export async function POST(request: Request) {
     const newBalance = (wallet.balance || 0) + transaction.amount
     const newCapital = (wallet.initial_capital || 0) + transaction.amount
 
-    // RESET 400% PROGRESS
+    // RESET 400% PROGRESS (Strict Type Cast to ensure it saves as 0 in DB)
     const { error: creditError } = await supabaseAdmin
       .from('wallets')
       .update({
-        balance: newBalance,
-        initial_capital: newCapital,
-        total_profit_earned: 0,
+        balance: Number(newBalance),
+        initial_capital: Number(newCapital),
+        total_profit_earned: 0.00,
         cap_reached: false,
         updated_at: new Date().toISOString(),
       })
