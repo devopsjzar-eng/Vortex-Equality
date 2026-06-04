@@ -379,139 +379,105 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-4 min-w-0">
           {/* Combined Wallet Display */}
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-        {/* Asset Wallet - Premium Glass Design */}
-        <Card className="relative overflow-hidden border border-white/[0.08] bg-[#0d1117]/80 shadow-2xl backdrop-blur-xl min-w-0">
-          {/* Subtle glow effect */}
-          <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-blue-500/10 blur-[80px]" />
-          <div className="absolute -left-20 -bottom-20 h-32 w-32 rounded-full bg-blue-400/5 blur-[60px]" />
+        {/* ASSET WALLET - APPLE MATTE LUXURY DESIGN */}
+        <div className="relative overflow-hidden rounded-[24px] bg-[#1C1C1E] border border-[#2C2C2E] shadow-2xl">
+          <div className="absolute top-0 right-0 p-6 opacity-10">
+            <Wallet className="h-32 w-32 text-white" />
+          </div>
           
-          <CardHeader className="relative px-5 pt-5 pb-2">
-            <CardTitle className="flex items-center justify-between">
+          <div className="relative z-10 p-6 sm:p-8 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 ring-1 ring-white/10">
-                  <Wallet className="h-5 w-5 text-blue-400" />
+                <div className="bg-[#2C2C2E] rounded-full p-2">
+                  <Wallet className="h-4 w-4 text-[#F5F5F7]" />
                 </div>
-                <span className="text-sm font-medium text-slate-300">Asset Wallet</span>
+                <h3 className="font-medium text-[#A1A1A6] tracking-wide text-sm">Asset Wallet</h3>
               </div>
-              <span className="rounded-full bg-blue-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-400 ring-1 ring-blue-500/20">
-                Auto-Compound
-              </span>
-            </CardTitle>
-          </CardHeader>
-          
-          <CardContent className="relative px-5 pb-5 pt-2 space-y-4">
-            {/* Balance */}
-            <div>
-              <p className="text-3xl font-bold tracking-tight text-white">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#2C2C2E]/50 border border-[#333336]">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#0071E3] animate-pulse"></div>
+                <span className="text-[9px] uppercase tracking-widest text-[#86868B] font-semibold">Auto-Compound</span>
+              </div>
+            </div>
+            
+            <div className="mb-8">
+              <p className="text-4xl sm:text-5xl font-bold tracking-tighter text-[#F5F5F7]">
                 {formatCurrency(assetBalance)}
               </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Active Capital: {formatCurrency(assetWallet?.initial_capital || 0)}
+              <p className="mt-2 text-xs font-medium text-[#86868B]">
+                Active Capital: <span className="text-[#A1A1A6]">{formatCurrency(assetWallet?.initial_capital || 0)}</span>
               </p>
             </div>
 
-            {/* ROI Progress */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500">ROI Progress</span>
+            {/* Premium ROI Progress */}
+            <div className="mt-auto space-y-3">
+              <div className="flex items-end justify-between">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-[#86868B]">ROI Progress</span>
                 <span className={cn(
-                  "font-semibold",
-                  isMaxROI ? 'text-red-400' : roiPercentage >= 100 ? 'text-emerald-400' : 'text-slate-300'
+                  "text-xs font-bold font-mono tracking-tight",
+                  isMaxROI ? 'text-[#FF3B30]' : 'text-[#F5F5F7]'
                 )}>
-                  {roiPercentage.toFixed(1)}% / 400%
+                  {roiPercentage.toFixed(1)}% <span className="text-[#55555A]">/ 400%</span>
                 </span>
               </div>
-              <div className="relative h-2 w-full overflow-hidden rounded-full bg-white/5">
+              <div className="h-1.5 w-full rounded-full bg-[#2C2C2E] overflow-hidden">
                 <div
                   className={cn(
-                    "h-full rounded-full transition-all duration-700",
-                    isMaxROI 
-                      ? 'bg-gradient-to-r from-red-500 to-red-400' 
-                      : roiPercentage >= 100 
-                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                        : 'bg-gradient-to-r from-blue-500 to-blue-400'
+                    "h-full rounded-full transition-all duration-1000 ease-out",
+                    isMaxROI ? "bg-[#FF3B30]" : "bg-gradient-to-r from-[#0071E3] to-[#5E5CE6]"
                   )}
                   style={{ width: `${roiProgress}%` }}
                 />
-                <div className="absolute left-1/4 top-0 h-full w-px bg-white/20" title="100% ROI" />
               </div>
-              {isMaxROI && (
-                <p className="flex items-center gap-1.5 text-[11px] font-medium text-red-400">
-                  <AlertCircle className="h-3 w-3" />
-                  Max ROI reached. Re-invest to continue earning.
-                </p>
-              )}
-              {!isMaxROI && roiPercentage >= 100 && (
-                <p className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-400">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Withdrawal fee reduced to 5%
-                </p>
-              )}
+              <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#2C2C2E]/60">
+                <span className="text-[11px] font-medium text-[#86868B]">Withdrawal Fee</span>
+                <span className={cn(
+                  "text-xs font-bold",
+                  roiPercentage >= 100 ? "text-[#34C759]" : "text-[#F5F5F7]"
+                )}>
+                  {roiPercentage >= 100 ? '5%' : '20%'}
+                </span>
+              </div>
             </div>
+          </div>
+        </div>
 
-            {/* Fee Info */}
-            <div className="flex items-center justify-between rounded-xl bg-white/[0.03] px-4 py-2.5 ring-1 ring-white/[0.06]">
-              <span className="text-xs text-slate-500">Withdrawal Fee</span>
-              <span className={cn(
-                "text-sm font-semibold",
-                roiPercentage >= 100 ? 'text-emerald-400' : 'text-slate-300'
-              )}>
-                {roiPercentage >= 100 ? '5%' : '20%'}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Bonus Wallet - Premium Glass Design */}
-        <Card className="relative overflow-hidden border border-white/[0.08] bg-[#0d1117]/80 shadow-2xl backdrop-blur-xl min-w-0">
-          {/* Subtle glow effect */}
-          <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-emerald-500/10 blur-[80px]" />
-          <div className="absolute -left-20 -bottom-20 h-32 w-32 rounded-full bg-teal-400/5 blur-[60px]" />
+        {/* BONUS WALLET - APPLE MATTE LUXURY DESIGN */}
+        <div className="relative overflow-hidden rounded-[24px] bg-[#1C1C1E] border border-[#2C2C2E] shadow-2xl">
+          <div className="absolute top-0 right-0 p-6 opacity-10">
+            <Gift className="h-32 w-32 text-white" />
+          </div>
           
-          <CardHeader className="relative px-5 pt-5 pb-2">
-            <CardTitle className="flex items-center justify-between">
+          <div className="relative z-10 p-6 sm:p-8 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-600/10 ring-1 ring-white/10">
-                  <Gift className="h-5 w-5 text-emerald-400" />
+                <div className="bg-[#2C2C2E] rounded-full p-2">
+                  <Gift className="h-4 w-4 text-[#F5F5F7]" />
                 </div>
-                <span className="text-sm font-medium text-slate-300">Bonus Wallet</span>
+                <h3 className="font-medium text-[#A1A1A6] tracking-wide text-sm">Bonus Wallet</h3>
               </div>
-              <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400 ring-1 ring-emerald-500/20">
-                No Cap
-              </span>
-            </CardTitle>
-          </CardHeader>
-          
-          <CardContent className="relative px-5 pb-5 pt-2 space-y-4">
-            {/* Balance */}
-            <div>
-              <p className="text-3xl font-bold tracking-tight text-white">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#2C2C2E]/50 border border-[#333336]">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#34C759]"></div>
+                <span className="text-[9px] uppercase tracking-widest text-[#86868B] font-semibold">No Limit</span>
+              </div>
+            </div>
+            
+            <div className="mb-8">
+              <p className="text-4xl sm:text-5xl font-bold tracking-tighter text-[#F5F5F7]">
                 {formatCurrency(bonusBalance)}
               </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Sponsor Bonus + Rank Rewards
+              <p className="mt-2 text-xs font-medium text-[#86868B]">
+                Source: <span className="text-[#A1A1A6]">Sponsor + Rank Rewards</span>
               </p>
             </div>
 
-            {/* Bonus Sources */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between rounded-xl bg-white/[0.03] px-4 py-2.5 ring-1 ring-white/[0.06]">
-                <span className="text-xs text-slate-500">Sponsor Bonus (3 Level)</span>
-                <span className="text-sm font-semibold text-emerald-400">8% / 5% / 2%</span>
-              </div>
-              <div className="flex items-center justify-between rounded-xl bg-white/[0.03] px-4 py-2.5 ring-1 ring-white/[0.06]">
-                <span className="text-xs text-slate-500">Rank Rewards (P1-P5)</span>
-                <span className="text-sm font-semibold text-emerald-400">$100 - $5,000</span>
+            <div className="mt-auto pt-4 border-t border-[#2C2C2E]/60 flex flex-col justify-end">
+              <div className="flex items-center justify-between mt-4">
+                <span className="text-[11px] font-medium text-[#86868B]">Withdrawal Fee</span>
+                <span className="text-xs font-bold text-[#34C759]">5% Flat</span>
               </div>
             </div>
-
-            {/* Fee Info */}
-            <div className="flex items-center justify-between rounded-xl bg-white/[0.03] px-4 py-2.5 ring-1 ring-white/[0.06]">
-              <span className="text-xs text-slate-500">Withdrawal Fee</span>
-              <span className="text-sm font-semibold text-slate-300">5% (Flat)</span>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
           </div>
         </div>
       </div>
@@ -519,111 +485,85 @@ export default function DashboardPage() {
       {/* Fund Management Card - Below Wallet Cards */}
       <FundManagementCard />
 
-      {/* Daily Profit Claim Card */}
-      <Card className={`relative overflow-hidden border-2 mt-4 ${
-        todayProfit?.status === 'available' 
-          ? 'border-blue-500/50 bg-gradient-to-r from-blue-500/10 via-blue-500/10 to-blue-500/5' 
-          : todayProfit?.status === 'claimed'
-          ? 'border-blue-500/30 bg-blue-500/5'
-          : 'border-muted bg-muted/20'
-      }`}>
-        {todayProfit?.status === 'available' && (
-          <>
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-transparent animate-pulse" />
-            <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-blue-500/20 blur-2xl" />
-          </>
-        )}
-        <CardContent className="relative p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-4">
-              <div className={`rounded-2xl p-4 ${
-                todayProfit?.status === 'available' 
-                  ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30' 
-                  : todayProfit?.status === 'claimed'
-                  ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
-                  : 'bg-muted text-muted-foreground'
-              }`}>
-                {todayProfit?.status === 'claimed' ? (
-                  <CheckCircle2 className="h-8 w-8" />
-                ) : (
-                  <Sparkles className="h-8 w-8" />
-                )}
-              </div>
-              <div>
-                <h3 className="text-lg font-bold">Daily Profit</h3>
-                {todayProfit?.status === 'available' ? (
-                  <>
-                    <p className="text-3xl font-bold text-blue-500">
-                      +{todayRate}%
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Today&apos;s Rate: {todayRate}% of your deposit
-                    </p>
-                  </>
-                ) : todayProfit?.status === 'claimed' ? (
-                  <>
-                    <p className="text-xl font-semibold text-blue-500">Claimed Today!</p>
-                    <p className="text-sm text-muted-foreground">
-                      +{formatCurrency(todayProfit.amount)} ({todayProfit.total_percentage.toFixed(1)}%) added to Asset Wallet
-                    </p>
-                  </>
-                ) : !isProfitTime ? (
-                  <>
-                    <p className="text-lg font-semibold text-muted-foreground">Not Available Yet</p>
-                    <p className="text-sm font-bold text-amber-500 mt-1">Claim Opens At 10:00 AM (WIB)</p>
-                  </>
-                ) : profile && profile.total_deposit === 0 ? (
-                  <>
-                    <p className="text-lg font-semibold text-muted-foreground">No Profit Today</p>
-                    <p className="text-sm text-muted-foreground">
-                      Make a deposit to start earning daily profits!
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-lg font-semibold text-blue-500">+{todayRate}% Available</p>
-                    <p className="text-sm text-muted-foreground">
-                      Click claim to receive your daily profit
-                    </p>
-                  </>
-                )}
-              </div>
+      {/* DAILY PROFIT CLAIM CARD - APPLE MATTE LUXURY STYLE */}
+      <div className="relative overflow-hidden rounded-[24px] bg-[#1C1C1E] border border-[#2C2C2E] shadow-2xl mt-4">
+        <div className="p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          
+          <div className="flex items-start gap-4 sm:gap-5">
+            <div className="bg-[#2C2C2E] rounded-2xl p-3 sm:p-4 border border-[#333336]">
+              <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-[#0071E3]" />
             </div>
-
-            <div className="flex flex-col items-stretch gap-2 md:items-end">
-              {/* MANUAL CLAIM BUTTON - Always show if profit time and has deposit and not claimed */}
-              {isProfitTime && profile && profile.total_deposit > 0 && todayProfit?.status !== 'claimed' && (
+            <div className="flex flex-col justify-center">
+              <h3 className="text-sm sm:text-base font-semibold text-[#A1A1A6] uppercase tracking-widest mb-1">Daily Profit</h3>
+              
+              {todayProfit?.status === 'claimed' ? (
                 <>
-                  <Button 
-                    size="lg" 
-                    className="bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 hover:from-green-600 hover:via-emerald-600 hover:to-green-700 active:from-green-700 active:via-emerald-700 active:to-green-800 text-white font-bold text-lg px-10 py-6 h-auto rounded-xl shadow-[0_8px_30px_rgba(34,197,94,0.5)] hover:shadow-[0_8px_40px_rgba(34,197,94,0.6)] active:shadow-[0_2px_10px_rgba(34,197,94,0.4)] active:scale-[0.92] active:translate-y-1 transition-all duration-100 ease-out transform select-none"
-                    onClick={handleClaimProfit}
-                    disabled={claiming}
-                  >
-                    {claiming ? (
-                      <span className="flex items-center gap-3">
-                        <RefreshCw className="h-6 w-6 animate-spin" />
-                        <span>Claiming...</span>
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-3">
-                        <Gift className="h-6 w-6" />
-                        <span>Claim Profit {todayRate}%</span>
-                      </span>
-                    )}
-                  </Button>
-                  <p className="text-xs text-green-500 text-center md:text-right">
-                    Available until 00:00 (Midnight)
+                  <p className="text-2xl sm:text-3xl font-bold tracking-tight text-[#34C759]">Claimed for today!</p>
+                  <p className="text-[11px] sm:text-xs font-medium text-[#86868B] mt-1">
+                    +{formatCurrency(todayProfit.amount)} ({todayProfit.total_percentage.toFixed(1)}%) added to Asset Wallet
+                  </p>
+                </>
+              ) : !isProfitTime ? (
+                <>
+                  <p className="text-2xl sm:text-3xl font-bold tracking-tight text-[#55555A]">Not Available Yet</p>
+                  <p className="text-[11px] sm:text-xs font-bold text-[#FF9F0A] mt-1 tracking-wide">
+                    CLAIM OPENS AT 10:00 AM (WIB)
+                  </p>
+                </>
+              ) : profile && profile.total_deposit === 0 ? (
+                <>
+                  <p className="text-xl sm:text-2xl font-bold tracking-tight text-[#55555A]">No Profit Today</p>
+                  <p className="text-[11px] sm:text-xs font-medium text-[#86868B] mt-1">
+                    You need an active deposit to earn daily profit.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-4xl sm:text-5xl font-bold tracking-tighter text-[#F5F5F7]">
+                    +{todayRate}%
+                  </p>
+                  <p className="text-[11px] sm:text-xs font-medium text-[#86868B] mt-1">
+                    Today&apos;s Rate: <span className="text-[#A1A1A6]">{todayRate}% of your active capital</span>
                   </p>
                 </>
               )}
-              {todayProfit?.status === 'claimed' && (
+            </div>
+          </div>
+
+          <div className="flex flex-col items-stretch gap-3 md:items-end w-full md:w-auto mt-2 md:mt-0">
+            {/* MANUAL CLAIM BUTTON */}
+            {isProfitTime && profile && profile.total_deposit > 0 && todayProfit?.status !== 'claimed' && (
+              <div className="flex flex-col gap-2 w-full md:w-auto">
                 <Button 
-                  variant="outline" 
-                  size="lg"
-                  className="border-2 border-blue-500 text-blue-500 font-semibold px-8 py-5 rounded-xl hover:bg-blue-500 hover:text-white active:scale-[0.92] active:translate-y-1 active:bg-blue-600 transition-all duration-100 ease-out transform select-none touch-manipulation shadow-lg hover:shadow-blue-500/30"
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                  onClick={() => {
+                  size="lg" 
+                  className="bg-[#0071E3] hover:bg-[#0077ED] active:bg-[#0062C3] text-white font-bold text-sm sm:text-base px-8 py-6 h-auto rounded-[16px] shadow-lg shadow-blue-900/20 active:scale-[0.98] transition-all duration-200"
+                  onClick={handleClaimProfit}
+                  disabled={claiming}
+                >
+                  {claiming ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Processing claim...</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <Gift className="h-5 w-5" />
+                      <span>CLAIM PROFIT {todayRate}%</span>
+                    </span>
+                  )}
+                </Button>
+                <p className="text-[10px] text-[#86868B] text-center md:text-right uppercase tracking-wider font-medium">
+                  Available until 00:00 (Midnight)
+                </p>
+              </div>
+            )}
+            
+            {todayProfit?.status === 'claimed' && (
+              <Button 
+                variant="outline" 
+                size="lg"
+                className="border-[#333336] bg-transparent text-[#F5F5F7] font-semibold px-8 py-5 rounded-[16px] hover:bg-[#2C2C2E] hover:text-white active:scale-[0.98] transition-all duration-200"
+                onClick={() => {
                   const now = new Date()
                   const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -638,20 +578,22 @@ export default function DashboardPage() {
                     note: 'Daily profit added to Asset Wallet'
                   })
                   setShowReceipt(true)
-                }}>
-                  View Receipt
-                </Button>
-              )}
-              {!isProfitTime && !todayProfit && (
-                <div className="text-center md:text-right">
-                  <p className="text-sm font-medium text-muted-foreground">Profit Hours:</p>
-                  <p className="text-xs text-muted-foreground">10:00 AM - 11:59 PM</p>
-                </div>
-              )}
-            </div>
+                }}
+              >
+                View Receipt
+              </Button>
+            )}
+            
+            {!isProfitTime && !todayProfit && (
+              <div className="text-center md:text-right bg-[#2C2C2E] px-4 py-2.5 rounded-xl border border-[#333336]">
+                <p className="text-[10px] font-semibold text-[#86868B] uppercase tracking-wider">Profit Hours</p>
+                <p className="text-xs font-bold text-[#F5F5F7] mt-0.5">10:00 AM - 11:59 PM</p>
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+          
+        </div>
+      </div>
 
       {/* Market Analysis Card */}
       <MarketInsightCard profitRate={todayProfit?.total_percentage || todayRate || 1.0} />
