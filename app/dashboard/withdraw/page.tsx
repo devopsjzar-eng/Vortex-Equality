@@ -346,41 +346,35 @@ export default function WithdrawPage() {
 
           {/* Network */}
           <div className="space-y-3">
-            <Label className="text-white font-medium">Select Network</Label>
+            <Label className="text-[#F5F5F7] font-semibold mb-1 block">Select Network</Label>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {networkOptions.map((net) => (
                 <button
                   key={net.id}
                   onClick={() => setSelectedNetwork(net.id)}
                   className={cn(
-                    'relative flex flex-col items-center text-center justify-center rounded-xl border-2 p-4 transition-all duration-300 overflow-hidden',
+                    'flex flex-col items-center text-center justify-center rounded-xl border p-4 transition-all duration-200',
                     selectedNetwork === net.id
-                      ? 'border-blue-500 bg-gradient-to-b from-blue-900/40 to-blue-600/10 shadow-[0_0_15px_rgba(59,130,246,0.3)] scale-[1.02]'
-                      : 'border-slate-700 bg-slate-800/80 hover:border-slate-500 hover:bg-slate-700'
+                      ? 'bg-[#2C2C2E] border-[#0071E3]'
+                      : 'bg-[#1D1D1F] border-[#333336] hover:border-[#55555A]'
                   )}
                 >
-                  {selectedNetwork === net.id && (
-                    <div className="absolute inset-0 bg-blue-500/5 blur-xl rounded-xl" />
-                  )}
-                  
-                  <div className="bg-white/10 p-2 rounded-full mb-2 z-10">
-                    <img src={net.logo} alt={net.name} className="w-6 h-6 object-contain" />
+                  <div className="bg-white p-1.5 rounded-full mb-2 relative">
+                    <img src={net.logo} alt={net.name} className="w-5 h-5 object-contain" />
+                    
+                    {selectedNetwork === net.id && (
+                      <div className="absolute -top-1 -right-1 bg-[#0071E3] rounded-full p-0.5 border-2 border-[#2C2C2E]">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      </div>
+                    )}
                   </div>
                   
                   <span className={cn(
-                    'text-xs font-bold z-10',
-                    selectedNetwork === net.id ? 'text-white' : 'text-slate-300'
+                    'text-xs font-semibold',
+                    selectedNetwork === net.id ? 'text-[#F5F5F7]' : 'text-[#A1A1A6]'
                   )}>
                     {net.name}
                   </span>
-                  
-                  {selectedNetwork === net.id && (
-                    <div className="absolute top-2 right-2">
-                      <div className="bg-blue-500 rounded-full p-0.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      </div>
-                    </div>
-                  )}
                 </button>
               ))}
             </div>
