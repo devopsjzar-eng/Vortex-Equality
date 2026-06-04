@@ -16,7 +16,9 @@ import {
   Clock,
   Shield,
   BadgeCheck,
-  PiggyBank
+  PiggyBank,
+  CheckCircle2,
+  Gift
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
