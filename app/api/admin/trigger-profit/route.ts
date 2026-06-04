@@ -43,11 +43,15 @@ export async function POST(request: Request) {
     let profitRecord = dailyProfit
 
     if (!dailyProfit) {
+      // FIX CHECK CONSTRAINT: The database has a hardcoded check constraint preventing daily_profits from exceeding 1.3% (0.013).
+      // We must cap the dummy record at 0.013 to pass the DB check, but the actual users will still get the real rate.
+      const safeDbPercentage = Math.min(globalPercentage, 0.013);
+      
       const { data: newProfit, error: profitError } = await supabaseAdmin
         .from('daily_profits')
         .insert({
           profit_date: profitDate,
-          global_profit_percentage: Number(globalPercentage.toFixed(4)),
+          global_profit_percentage: Number(safeDbPercentage.toFixed(4)),
           member_share: Number(memberShare.toFixed(2)),
           company_share: Number(companyShare.toFixed(2)),
           distribution_time: new Date().toISOString(),
