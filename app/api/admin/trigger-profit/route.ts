@@ -124,11 +124,11 @@ export async function POST(request: Request) {
       const memberProfit = grossProfit * (memberShare / 100)
 
       // Insert profit claim
-      // FIX NUMERIC OVERFLOW: The database expects FRACTIONS (0.015) not whole percentages (1.5)!
-      // That's why passing 1.5 caused an overflow on a numeric column restricted to tiny decimals.
-      const fractionBase = parseFloat((basePercentage / 100).toFixed(4));
-      const fractionTotal = parseFloat((totalPercentage / 100).toFixed(4));
+      // FIX NUMERIC OVERFLOW: Match the cron job perfectly.
+      // Supabase numeric constraint expects up to 3 decimals for percentages, 2 for amount.
       const roundedAmount = parseFloat(memberProfit.toFixed(2));
+      const roundedBase = parseFloat(basePercentage.toFixed(3));
+      const roundedTotal = parseFloat(totalPercentage.toFixed(3));
 
       const { error: insertError } = await supabaseAdmin
         .from('profit_claims')
@@ -136,9 +136,9 @@ export async function POST(request: Request) {
           user_id: member.id,
           daily_profit_id: profitRecord.id,
           amount: roundedAmount,
-          base_percentage: fractionBase,
+          base_percentage: roundedBase,
           booster_percentage: 0,
-          total_percentage: fractionTotal,
+          total_percentage: roundedTotal,
           status: 'available',
           claimed_at: null
         })
