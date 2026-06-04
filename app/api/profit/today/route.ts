@@ -158,9 +158,10 @@ export async function GET(request: Request) {
     }
 
     // Calculate profit
-    const boosterPercentage = profile.booster_percentage || 0
-    const basePercentage = globalProfitPercentage * 100 * 0.5 // Member gets 50%
-    const totalPercentage = basePercentage + boosterPercentage
+    // STRATEGIC BOOSTER DIHAPUS (SESUAI INSTRUKSI OWNER)
+    const boosterPercentage = 0
+    const basePercentage = globalProfitPercentage * 100 // Member gets 100%, no profit sharing
+    const totalPercentage = basePercentage
     
     let profitAmount = wallet.balance * (totalPercentage / 100)
     
