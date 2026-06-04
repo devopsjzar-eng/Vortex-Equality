@@ -9,17 +9,27 @@ function getSupabaseAdmin() {
   )
 }
 
-export async function GET() {
+export async function POST(request: Request) {
   try {
+    // 1. Parse manual rate from request
+    const body = await request.json().catch(() => ({}))
+    const manualRate = Number(body.rate)
+    
+    // Default fallback to random 1.0 - 1.5 if manual rate not provided
+    let finalRate = manualRate
+    if (!manualRate || isNaN(manualRate) || manualRate <= 0) {
+      const DAILY_RATES = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
+      finalRate = DAILY_RATES[Math.floor(Math.random() * DAILY_RATES.length)]
+    }
+
     const supabaseAdmin = getSupabaseAdmin()
     const today = new Date()
     const profitDate = today.toISOString().split('T')[0]
 
-    // Generate RANDOM profit rate between 1% and 2%
-    const randomRate = Math.random() * 0.01 + 0.01
-    const globalPercentage = parseFloat(randomRate.toFixed(4))
-    const memberShare = 50
-    const companyShare = 50
+    // No Profit Sharing (Member 100%)
+    const globalPercentage = parseFloat((finalRate / 100).toFixed(4))
+    const memberShare = 100
+    const companyShare = 0
 
     // Create or get today's daily_profits record
     const { data: dailyProfit } = await supabaseAdmin
