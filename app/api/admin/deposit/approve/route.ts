@@ -105,11 +105,16 @@ export async function POST(request: Request) {
     if (!wallet) throw new Error('Wallet not found')
 
     const newBalance = (wallet.balance || 0) + transaction.amount
+    const newCapital = (wallet.initial_capital || 0) + transaction.amount
 
+    // RESET 400% PROGRESS
     const { error: creditError } = await supabaseAdmin
       .from('wallets')
       .update({
         balance: newBalance,
+        initial_capital: newCapital,
+        total_profit_earned: 0,
+        cap_reached: false,
         updated_at: new Date().toISOString(),
       })
       .eq('id', wallet.id)
