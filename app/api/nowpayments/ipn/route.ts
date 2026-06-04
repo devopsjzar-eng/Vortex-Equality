@@ -249,17 +249,7 @@ async function creditUserWallet(userId: string, amount: number) {
     const newBalance = Number(wallet.balance) + amount
     const newCapital = Number(wallet.initial_capital) + amount
     
-    await supabaseAdmin
-      .from('wallets')
-      .update({
-        balance: newBalance,
-        initial_capital: newCapital,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', wallet.id)
-    
-    // Update profile total_deposit
-    // IMPORTANT: Check if this is a TOP UP (existing deposit) - if so, reset booster
+    // Fetch current profile to check if it's a top up
     const { data: currentProfile } = await supabaseAdmin
       .from('profiles')
       .select('total_deposit, booster_percentage')
@@ -268,6 +258,21 @@ async function creditUserWallet(userId: string, amount: number) {
 
     const existingDeposit = Number(currentProfile?.total_deposit || 0)
     const isTopUp = existingDeposit > 0 // Already has deposit = this is a top up
+    
+    // UPDATE WALLET: If Top-up, RESET 400% tracker (total_profit_earned = 0, cap_reached = false)
+    await supabaseAdmin
+      .from('wallets')
+      .update({
+        balance: newBalance,
+        initial_capital: newCapital,
+        total_profit_earned: isTopUp ? 0 : undefined,
+        cap_reached: isTopUp ? false : undefined,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', wallet.id)
+    
+    // Update profile total_deposit
+    // IMPORTANT: Check if this is a TOP UP (existing deposit) - if so, reset booster
     const currentBooster = Number(currentProfile?.booster_percentage || 0)
 
     // If TOP UP and has booster, RESET booster to 0
