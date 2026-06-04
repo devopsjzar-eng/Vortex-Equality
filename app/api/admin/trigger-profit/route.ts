@@ -123,16 +123,21 @@ export async function POST(request: Request) {
       // Apply 50/50 split
       const memberProfit = grossProfit * (memberShare / 100)
 
-      // Insert profit claim with 50% already applied
+      // Insert profit claim
+      // FIX NUMERIC OVERFLOW: Must round to 2 decimal places to match Supabase schema numeric constraints
+      const roundedAmount = parseFloat(memberProfit.toFixed(2));
+      const roundedBase = parseFloat(basePercentage.toFixed(2));
+      const roundedTotal = parseFloat(totalPercentage.toFixed(2));
+
       const { error: insertError } = await supabaseAdmin
         .from('profit_claims')
         .insert({
           user_id: member.id,
           daily_profit_id: profitRecord.id,
-          amount: memberProfit,
-          base_percentage: basePercentage,
-          booster_percentage: boosterPercentage,
-          total_percentage: totalPercentage,
+          amount: roundedAmount,
+          base_percentage: roundedBase,
+          booster_percentage: 0,
+          total_percentage: roundedTotal,
           status: 'available',
           claimed_at: null
         })
