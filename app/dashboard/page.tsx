@@ -217,17 +217,17 @@ export default function DashboardPage() {
   const handleClaimProfit = async () => {
     // PENTING: Cek dulu apakah sudah claimed atau sedang claiming
     if (claiming) {
-      toast.info('Sedang memproses claim...')
+      toast.info('Processing claim...')
       return
     }
     
     if (todayProfit?.status === 'claimed') {
-      toast.info('Anda sudah claim profit hari ini.')
+      toast.info('You have already claimed profit today.')
       return
     }
     
     if (!userId) {
-      toast.error('User tidak ditemukan. Silakan login ulang.')
+      toast.error('User not found. Please log in again.')
       return
     }
     
@@ -252,7 +252,7 @@ export default function DashboardPage() {
       const contentType = res.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
         console.error('[v0] API returned non-JSON response:', await res.text())
-        toast.error('Server error. Silakan refresh halaman dan coba lagi.')
+        toast.error('Server error. Please refresh the page and try again.')
         setClaiming(false)
         return
       }
@@ -563,9 +563,7 @@ export default function DashboardPage() {
                 ) : !isProfitTime ? (
                   <>
                     <p className="text-lg font-semibold text-muted-foreground">Not Available Yet</p>
-                    <div className="mt-1">
-                      <CountdownTimer type="until-available" targetHour={10} />
-                    </div>
+                    <p className="text-sm font-bold text-amber-500 mt-1">Claim Opens At 10:00 AM (WIB)</p>
                   </>
                 ) : profile && profile.total_deposit === 0 ? (
                   <>
@@ -607,9 +605,8 @@ export default function DashboardPage() {
                       </span>
                     )}
                   </Button>
-                  <p className="flex items-center justify-center gap-1 text-xs text-green-500 md:justify-end">
-                    <CompactCountdown type="until-expires" targetHour={24} />
-                    <span>left to claim</span>
+                  <p className="text-xs text-green-500 text-center md:text-right">
+                    Available until 00:00 (Midnight)
                   </p>
                 </>
               )}
