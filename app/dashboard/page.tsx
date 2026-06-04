@@ -519,111 +519,89 @@ export default function DashboardPage() {
       {/* Fund Management Card - Below Wallet Cards */}
       <FundManagementCard />
 
-      {/* Daily Profit Claim Card */}
-      <Card className={`relative overflow-hidden border-2 mt-4 ${
-        todayProfit?.status === 'available' 
-          ? 'border-blue-500/50 bg-gradient-to-r from-blue-500/10 via-blue-500/10 to-blue-500/5' 
-          : todayProfit?.status === 'claimed'
-          ? 'border-blue-500/30 bg-blue-500/5'
-          : 'border-muted bg-muted/20'
-      }`}>
-        {todayProfit?.status === 'available' && (
-          <>
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-transparent animate-pulse" />
-            <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-blue-500/20 blur-2xl" />
-          </>
-        )}
-        <CardContent className="relative p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-4">
-              <div className={`rounded-2xl p-4 ${
-                todayProfit?.status === 'available' 
-                  ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30' 
-                  : todayProfit?.status === 'claimed'
-                  ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
-                  : 'bg-muted text-muted-foreground'
-              }`}>
-                {todayProfit?.status === 'claimed' ? (
-                  <CheckCircle2 className="h-8 w-8" />
-                ) : (
-                  <Sparkles className="h-8 w-8" />
-                )}
-              </div>
-              <div>
-                <h3 className="text-lg font-bold">Daily Profit</h3>
-                {todayProfit?.status === 'available' ? (
-                  <>
-                    <p className="text-3xl font-bold text-blue-500">
-                      +{todayRate}%
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Today&apos;s Rate: {todayRate}% of your deposit
-                    </p>
-                  </>
-                ) : todayProfit?.status === 'claimed' ? (
-                  <>
-                    <p className="text-xl font-semibold text-blue-500">Claimed Today!</p>
-                    <p className="text-sm text-muted-foreground">
-                      +{formatCurrency(todayProfit.amount)} ({todayProfit.total_percentage.toFixed(1)}%) added to Asset Wallet
-                    </p>
-                  </>
-                ) : !isProfitTime ? (
-                  <>
-                    <p className="text-lg font-semibold text-muted-foreground">Not Available Yet</p>
-                    <p className="text-sm font-bold text-amber-500 mt-1">Claim Opens At 10:00 AM (WIB)</p>
-                  </>
-                ) : profile && profile.total_deposit === 0 ? (
-                  <>
-                    <p className="text-lg font-semibold text-muted-foreground">No Profit Today</p>
-                    <p className="text-sm text-muted-foreground">
-                      Make a deposit to start earning daily profits!
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-lg font-semibold text-blue-500">+{todayRate}% Available</p>
-                    <p className="text-sm text-muted-foreground">
-                      Click claim to receive your daily profit
-                    </p>
-                  </>
-                )}
-              </div>
+      {/* THE VICTORY BUTTON - Daily Profit Claim Card (Apple Matte Style) */}
+      <div className="mt-4 rounded-[24px] bg-[#1C1C1E] shadow-[0_8px_30px_rgb(0,0,0,0.4)] border border-[#2C2C2E]/60 overflow-hidden">
+        <div className="p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          
+          {/* Left Side: Info */}
+          <div className="flex items-start gap-4 sm:gap-5">
+            <div className="bg-[#2C2C2E] rounded-[18px] p-3.5 border border-[#333336]">
+              <Sparkles className="h-7 w-7 text-[#D4AF37]" /> {/* Matte Gold Icon */}
             </div>
-
-            <div className="flex flex-col items-stretch gap-2 md:items-end">
-              {/* MANUAL CLAIM BUTTON - Always show if profit time and has deposit and not claimed */}
-              {isProfitTime && profile && profile.total_deposit > 0 && todayProfit?.status !== 'claimed' && (
+            <div className="flex flex-col justify-center">
+              <h3 className="text-xs sm:text-sm font-semibold text-[#86868B] uppercase tracking-widest mb-1">Daily Profit</h3>
+              
+              {todayProfit?.status === 'claimed' ? (
                 <>
-                  <Button 
-                    size="lg" 
-                    className="bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 hover:from-green-600 hover:via-emerald-600 hover:to-green-700 active:from-green-700 active:via-emerald-700 active:to-green-800 text-white font-bold text-lg px-10 py-6 h-auto rounded-xl shadow-[0_8px_30px_rgba(34,197,94,0.5)] hover:shadow-[0_8px_40px_rgba(34,197,94,0.6)] active:shadow-[0_2px_10px_rgba(34,197,94,0.4)] active:scale-[0.92] active:translate-y-1 transition-all duration-100 ease-out transform select-none"
-                    onClick={handleClaimProfit}
-                    disabled={claiming}
-                  >
-                    {claiming ? (
-                      <span className="flex items-center gap-3">
-                        <RefreshCw className="h-6 w-6 animate-spin" />
-                        <span>Claiming...</span>
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-3">
-                        <Gift className="h-6 w-6" />
-                        <span>Claim Profit {todayRate}%</span>
-                      </span>
-                    )}
-                  </Button>
-                  <p className="text-xs text-green-500 text-center md:text-right">
-                    Available until 00:00 (Midnight)
+                  <p className="text-2xl sm:text-3xl font-bold tracking-tight text-[#F5F5F7]">Claimed for today!</p>
+                  <p className="text-[11px] sm:text-xs font-medium text-[#34C759] mt-1">
+                    +{formatCurrency(todayProfit.amount)} ({todayProfit.total_percentage.toFixed(1)}%) added to Asset Wallet
+                  </p>
+                </>
+              ) : !isProfitTime ? (
+                <>
+                  <p className="text-2xl sm:text-3xl font-bold tracking-tight text-[#55555A]">Locked</p>
+                  <p className="text-[11px] sm:text-xs font-medium text-[#86868B] mt-1">
+                    Please return during profit hours
+                  </p>
+                </>
+              ) : profile && profile.total_deposit === 0 ? (
+                <>
+                  <p className="text-xl sm:text-2xl font-bold tracking-tight text-[#55555A]">No Active Asset</p>
+                  <p className="text-[11px] sm:text-xs font-medium text-[#86868B] mt-1">
+                    Deposit funds to activate daily profits.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-4xl sm:text-5xl font-bold tracking-tighter text-[#34C759]">
+                    +{todayRate}%
+                  </p>
+                  <p className="text-[11px] sm:text-xs font-medium text-[#86868B] mt-1">
+                    Ready to claim from your active capital
                   </p>
                 </>
               )}
-              {todayProfit?.status === 'claimed' && (
+            </div>
+          </div>
+
+          {/* Right Side: Action Button */}
+          <div className="flex flex-col items-stretch gap-3 md:items-end w-full md:w-auto mt-2 md:mt-0">
+            
+            {/* CLAIM BUTTON */}
+            {isProfitTime && profile && profile.total_deposit > 0 && todayProfit?.status !== 'claimed' && (
+              <div className="flex flex-col gap-2 w-full md:w-auto">
                 <Button 
-                  variant="outline" 
-                  size="lg"
-                  className="border-2 border-blue-500 text-blue-500 font-semibold px-8 py-5 rounded-xl hover:bg-blue-500 hover:text-white active:scale-[0.92] active:translate-y-1 active:bg-blue-600 transition-all duration-100 ease-out transform select-none touch-manipulation shadow-lg hover:shadow-blue-500/30"
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                  onClick={() => {
+                  size="lg" 
+                  className="bg-[#0071E3] hover:bg-[#0077ED] active:bg-[#005bb5] text-white font-bold text-sm sm:text-base px-10 py-7 h-auto rounded-[20px] shadow-sm active:scale-[0.95] transition-all duration-200 ease-out select-none touch-manipulation"
+                  onClick={handleClaimProfit}
+                  disabled={claiming}
+                >
+                  {claiming ? (
+                    <span className="flex items-center justify-center gap-3">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Processing...</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-3">
+                      <Sparkles className="h-5 w-5" />
+                      <span>CLAIM PROFIT {todayRate}%</span>
+                    </span>
+                  )}
+                </Button>
+                <p className="text-[10px] text-[#86868B] text-center md:text-right font-medium">
+                  Available until 00:00 (Midnight)
+                </p>
+              </div>
+            )}
+            
+            {/* VIEW RECEIPT BUTTON */}
+            {todayProfit?.status === 'claimed' && (
+              <Button 
+                variant="outline" 
+                size="lg"
+                className="border-[#333336] bg-transparent text-[#F5F5F7] font-semibold px-8 py-6 rounded-[20px] hover:bg-[#2C2C2E] hover:text-white active:scale-[0.96] transition-all duration-200"
+                onClick={() => {
                   const now = new Date()
                   const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -638,20 +616,32 @@ export default function DashboardPage() {
                     note: 'Daily profit added to Asset Wallet'
                   })
                   setShowReceipt(true)
-                }}>
-                  View Receipt
+                }}
+              >
+                <CheckCircle2 className="mr-2 h-5 w-5 text-[#34C759]" />
+                View Receipt
+              </Button>
+            )}
+            
+            {/* LOCKED BUTTON (Before 10 AM) */}
+            {!isProfitTime && !todayProfit && (
+              <div className="flex flex-col gap-2 w-full md:w-auto">
+                <Button 
+                  size="lg" 
+                  disabled
+                  className="bg-[#2C2C2E] text-[#86868B] font-bold text-sm sm:text-base px-10 py-7 h-auto rounded-[20px] opacity-100 select-none cursor-not-allowed border border-[#333336]"
+                >
+                  <span className="flex items-center justify-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>OPENS AT 10:00 AM WIB</span>
+                  </span>
                 </Button>
-              )}
-              {!isProfitTime && !todayProfit && (
-                <div className="text-center md:text-right">
-                  <p className="text-sm font-medium text-muted-foreground">Profit Hours:</p>
-                  <p className="text-xs text-muted-foreground">10:00 AM - 11:59 PM</p>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+          
+        </div>
+      </div>
 
       {/* Market Analysis Card */}
       <MarketInsightCard profitRate={todayProfit?.total_percentage || todayRate || 1.0} />
