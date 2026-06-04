@@ -406,7 +406,7 @@ export default function DashboardPage() {
                 {formatCurrency(assetBalance)}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Initial Deposit: {formatCurrency(profile?.total_deposit || 0)}
+                Active Capital: {formatCurrency(assetWallet?.initial_capital || 0)}
               </p>
             </div>
 
