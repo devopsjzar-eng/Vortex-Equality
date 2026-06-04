@@ -57,12 +57,11 @@ export async function POST(request: Request) {
       profitRecord = newProfit
     }
 
-    // Get all eligible members (deposit > 0, not admin)
+    // Get all eligible members (not admin)
     const { data: members, error: membersError } = await supabaseAdmin
       .from('profiles')
-      .select('id, total_deposit, booster_percentage, is_admin')
+      .select('id, total_deposit, is_admin')
       .eq('is_admin', false)
-      .gt('total_deposit', 0)
 
     if (membersError) throw membersError
 
@@ -74,7 +73,7 @@ export async function POST(request: Request) {
       // Get member's asset wallet
       const { data: wallet, error: walletError } = await supabaseAdmin
         .from('wallets')
-        .select('balance')
+        .select('balance, initial_capital, total_profit_earned')
         .eq('user_id', member.id)
         .eq('wallet_type', 'asset')
         .single()
@@ -84,16 +83,20 @@ export async function POST(request: Request) {
         continue
       }
 
+      const activeCapital = wallet.initial_capital || 0
       const assetBalance = wallet.balance || 0
-      if (assetBalance <= 0) {
+      
+      // SYARAT MINIMAL ASSET AKTIF $50
+      if (activeCapital < 50 || assetBalance <= 0) {
         skipped++
         continue
       }
 
-      // Check ROI cap (400% = 4x deposit)
-      const maxEarnings = (member.total_deposit || 0) * 4.0
-      const currentEarnings = assetBalance - (member.total_deposit || 0)
-      if (currentEarnings >= maxEarnings) {
+      // Check ROI cap (400% = 300% profit bersih + 100% modal)
+      const totalProfitEarned = wallet.total_profit_earned || 0
+      const maxROI = activeCapital * 3
+      
+      if (totalProfitEarned >= maxROI) {
         skipped++
         continue
       }
