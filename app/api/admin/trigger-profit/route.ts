@@ -70,6 +70,7 @@ export async function POST(request: Request) {
 
     let generated = 0
     let skipped = 0
+    let skipReason = { lessThan50: 0, roiCap: 0, existing: 0, noWallet: 0 }
     const results: any[] = []
 
     for (const member of members || []) {
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
         .single()
 
       if (walletError || !wallet) {
-        skipped++
+        skipped++; skipReason.noWallet++;
         continue
       }
 
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
       
       // SYARAT MINIMAL ASSET AKTIF $50
       if (activeCapital < 50 || assetBalance <= 0) {
-        skipped++
+        skipped++; skipReason.lessThan50++;
         continue
       }
 
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
       const maxROI = activeCapital * 3
       
       if (totalProfitEarned >= maxROI) {
-        skipped++
+        skipped++; skipReason.roiCap++;
         continue
       }
 
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
         .single()
 
       if (existing) {
-        skipped++
+        skipped++; skipReason.existing++;
         continue
       }
 
