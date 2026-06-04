@@ -302,9 +302,13 @@ export default function DashboardPage() {
     }
   }
 
-  // Calculate ROI percentage (profit / deposit * 100)
-  const roiPercentage = profile && profile.total_deposit > 0 
-    ? ((assetBalance - profile.total_deposit) / profile.total_deposit) * 100 
+  // Calculate ROI percentage using actual profit earned vs active capital
+  // Modal Aktif = wallet.initial_capital
+  const activeCapital = assetWalletData?.initial_capital || 0
+  const actualProfitEarned = assetWalletData?.total_profit_earned || 0
+  
+  const roiPercentage = activeCapital > 0 
+    ? (actualProfitEarned / activeCapital) * 100 
     : 0
   const roiProgress = Math.min(Math.max(roiPercentage / 4, 0), 100) // Progress to 400%
   const isMaxROI = roiPercentage >= 400
