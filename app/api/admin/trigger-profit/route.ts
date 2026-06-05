@@ -120,9 +120,12 @@ export async function POST(request: Request) {
 
       // Check ROI cap (400% = 300% profit bersih + 100% modal)
       const totalProfitEarned = wallet.total_profit_earned || 0
-      const maxROI = activeCapital * 3
+      // Gunakan fallback ke totalDeposit jika initial_capital di wallet masih 0 (karena ini member lama)
+      const effectiveCapital = activeCapital > 0 ? activeCapital : totalDeposit
+      const maxROI = effectiveCapital * 3
       
-      if (totalProfitEarned >= maxROI) {
+      // Berikan perlindungan: jika maxROI 0, jangan block, karena mungkin data wallet belum tersinkronisasi
+      if (maxROI > 0 && totalProfitEarned >= maxROI) {
         skipped++; skipReason.roiCap++;
         continue
       }
