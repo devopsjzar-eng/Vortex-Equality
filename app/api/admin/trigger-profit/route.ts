@@ -179,13 +179,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Profit generated for ${generated} members`,
+      message: `Profit generated for ${generated} members (Skipped: ${skipped}. Under $50: ${skipReason.lessThan50}, Hit 400%: ${skipReason.roiCap}, Already Claimed: ${skipReason.existing}, No Wallet: ${skipReason.noWallet})`,
       date: profitDate,
       globalPercentage: (globalPercentage * 100).toFixed(2) + '%',
       memberShare: memberShare + '%',
       companyShare: companyShare + '%',
       generated,
       skipped,
+      skipReason,
       results
     })
 
