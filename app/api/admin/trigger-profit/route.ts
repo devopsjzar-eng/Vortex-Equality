@@ -12,16 +12,19 @@ function getSupabaseAdmin() {
 export async function GET(request: Request) {
   try {
     const supabaseAdmin = getSupabaseAdmin()
-    const today = new Date()
-    const profitDate = today.toISOString().split('T')[0]
     
-    // Wipe all profit claims for today
-    await supabaseAdmin.from('profit_claims').delete().gte('created_at', `${profitDate}T00:00:00`)
+    // Timezone safe deletion: Delete everything from the last 24 hours.
+    const yesterday = new Date();
+    yesterday.setHours(yesterday.getHours() - 24);
+    const safeTime = yesterday.toISOString();
     
-    // Wipe daily_profits for today
-    await supabaseAdmin.from('daily_profits').delete().eq('profit_date', profitDate)
+    // Wipe all profit claims from the last 24 hours
+    await supabaseAdmin.from('profit_claims').delete().gte('created_at', safeTime)
     
-    return NextResponse.json({ success: true, message: "Sampah profit 2% hari ini berhasil dibersihkan!" })
+    // Wipe daily_profits from the last 24 hours
+    await supabaseAdmin.from('daily_profits').delete().gte('created_at', safeTime)
+    
+    return NextResponse.json({ success: true, message: "Seluruh sampah profit 24 jam terakhir (termasuk timezone nyangkut) BERHASIL DIBERSIHKAN TOTAL!" })
   } catch(e) {
     return NextResponse.json({ error: e.message })
   }
