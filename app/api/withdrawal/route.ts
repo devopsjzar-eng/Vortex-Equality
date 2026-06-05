@@ -240,42 +240,22 @@ export async function POST(request: NextRequest) {
         .eq('id', user.id)
         .single()
       
-      // Fetch Modal Aktif dari wallet (ini direset saat top up, jadi lebih akurat)
-      const activeCapital = Number(wallet.initial_capital || 0)
+      const totalDeposit = profile?.total_deposit || 0
       
-      // Cari tanggal deposit/top-up TERAKHIR member ini
-      const { data: lastDeposit } = await supabaseAdmin
-        .from('transactions')
-        .select('created_at')
-        .eq('user_id', user.id)
-        .eq('type', 'deposit')
-        .eq('status', 'success')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-        
-      const lastDepositDate = lastDeposit?.created_at || '2000-01-01T00:00:00.000Z'
-
-      // Hitung total withdrawal SUKSES/PENDING HANYA SETELAH top-up terakhir
-      // Ini memastikan fee kembali ke 20% setiap kali ada top-up baru
-      const { data: pastWithdrawals } = await supabaseAdmin
-        .from('transactions')
-        .select('amount')
-        .eq('user_id', user.id)
-        .eq('wallet_type', 'asset')
-        .eq('type', 'withdrawal')
-        .in('status', ['success', 'pending'])
-        .gte('created_at', lastDepositDate)
-        
-      const totalWithdrawn = pastWithdrawals?.reduce((sum, tx) => sum + Number(tx.amount || 0), 0) || 0
+      // Calculate profit percentage: (current_balance - total_deposit) / total_deposit
+      let profitPercentage = 0
+      if (totalDeposit > 0) {
+        profitPercentage = ((wallet.balance - totalDeposit) / totalDeposit) * 100
+      }
       
       // Fee logic:
-      // BEP 100% diukur dari: Apakah total uang yang sudah dia WD >= Modal aktif dia?
-      if (activeCapital > 0 && totalWithdrawn >= activeCapital) {
-        // Sudah BEP (Balik Modal) - fee turun jadi 5%
+      // - If profit >= 100% (balance >= total_deposit × 2): fee 5%
+      // - If profit < 100%: fee 20%
+      if (profitPercentage >= 100) {
+        // User has reached 100% profit (balik modal) - 5% fee
         feePercentage = 5
       } else {
-        // Belum BEP - fee 20%
+        // User hasn't reached 100% profit yet - 20% fee
         feePercentage = 20
       }
     }

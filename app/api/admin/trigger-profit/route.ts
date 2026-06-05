@@ -9,50 +9,17 @@ function getSupabaseAdmin() {
   )
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const supabaseAdmin = getSupabaseAdmin()
-    
-    // Timezone safe deletion: Delete everything from the last 24 hours.
-    const yesterday = new Date();
-    yesterday.setHours(yesterday.getHours() - 24);
-    const safeTime = yesterday.toISOString();
-    
-    // Wipe all profit claims from the last 24 hours
-    await supabaseAdmin.from('profit_claims').delete().gte('created_at', safeTime)
-    
-    // Wipe daily_profits from the last 24 hours
-    await supabaseAdmin.from('daily_profits').delete().gte('created_at', safeTime)
-    
-    return NextResponse.json({ success: true, message: "Seluruh sampah profit 24 jam terakhir (termasuk timezone nyangkut) BERHASIL DIBERSIHKAN TOTAL!" })
-  } catch(e) {
-    return NextResponse.json({ error: e.message })
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    // 1. Parse manual rate from request
-    const body = await request.json().catch(() => ({}))
-    const manualRate = Number(body.rate)
-    
-    // Default fallback to random 1.0 - 1.5 if manual rate not provided
-    let finalRate = manualRate
-    if (!manualRate || isNaN(manualRate) || manualRate <= 0) {
-      const DAILY_RATES = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
-      finalRate = DAILY_RATES[Math.floor(Math.random() * DAILY_RATES.length)]
-    }
-
     const supabaseAdmin = getSupabaseAdmin()
     const today = new Date()
     const profitDate = today.toISOString().split('T')[0]
 
-    // No Profit Sharing (Member 100%)
-    // FIX NUMERIC OVERFLOW: The database schema for member_share is likely numeric(4,2) which maxes out at 99.99!
-    // Passing 100 causes a database crash. We pass 99.99 to bypass the limit.
-    const globalPercentage = parseFloat((finalRate / 100).toFixed(4))
-    const memberShare = 99.99
-    const companyShare = 0
+    // Generate RANDOM profit rate between 1% and 2%
+    const randomRate = Math.random() * 0.01 + 0.01
+    const globalPercentage = parseFloat(randomRate.toFixed(4))
+    const memberShare = 50
+    const companyShare = 50
 
     // Create or get today's daily_profits record
     const { data: dailyProfit } = await supabaseAdmin
@@ -64,14 +31,13 @@ export async function POST(request: Request) {
     let profitRecord = dailyProfit
 
     if (!dailyProfit) {
-      // FIX CHECK CONSTRAINT: The database expects WHOLE NUMBERS (1.50) for daily_profits, NOT fractions (0.015)!
       const { data: newProfit, error: profitError } = await supabaseAdmin
         .from('daily_profits')
         .insert({
           profit_date: profitDate,
-          global_profit_percentage: Number(finalRate.toFixed(2)),
-          member_share: Number(memberShare.toFixed(2)),
-          company_share: Number(companyShare.toFixed(2)),
+          global_profit_percentage: globalPercentage,
+          member_share: memberShare,
+          company_share: companyShare,
           distribution_time: new Date().toISOString(),
         })
         .select()
@@ -81,52 +47,44 @@ export async function POST(request: Request) {
       profitRecord = newProfit
     }
 
-    // Get all eligible members (not admin)
+    // Get all eligible members (deposit > 0, not admin)
     const { data: members, error: membersError } = await supabaseAdmin
       .from('profiles')
-      .select('id, total_deposit, is_admin')
+      .select('id, total_deposit, booster_percentage, is_admin')
       .eq('is_admin', false)
+      .gt('total_deposit', 0)
 
     if (membersError) throw membersError
 
     let generated = 0
     let skipped = 0
-    let skipReason = { lessThan50: 0, roiCap: 0, existing: 0, noWallet: 0 }
     const results: any[] = []
 
     for (const member of members || []) {
       // Get member's asset wallet
       const { data: wallet, error: walletError } = await supabaseAdmin
         .from('wallets')
-        .select('balance, initial_capital, total_profit_earned')
+        .select('balance')
         .eq('user_id', member.id)
         .eq('wallet_type', 'asset')
         .single()
 
       if (walletError || !wallet) {
-        skipped++; skipReason.noWallet++;
+        skipped++
         continue
       }
 
-      const activeCapital = wallet.initial_capital || 0
       const assetBalance = wallet.balance || 0
-      
-      // SYARAT MINIMAL ASSET AKTIF $50 (Membaca Total Deposit sesuai instruksi Owner)
-      const totalDeposit = member.total_deposit || 0
-      if (totalDeposit < 50) {
-        skipped++; skipReason.lessThan50++;
+      if (assetBalance <= 0) {
+        skipped++
         continue
       }
 
-      // Check ROI cap (400% = 300% profit bersih + 100% modal)
-      const totalProfitEarned = wallet.total_profit_earned || 0
-      // Gunakan fallback ke totalDeposit jika initial_capital di wallet masih 0 (karena ini member lama)
-      const effectiveCapital = activeCapital > 0 ? activeCapital : totalDeposit
-      const maxROI = effectiveCapital * 3
-      
-      // Berikan perlindungan: jika maxROI 0, jangan block, karena mungkin data wallet belum tersinkronisasi
-      if (maxROI > 0 && totalProfitEarned >= maxROI) {
-        skipped++; skipReason.roiCap++;
+      // Check ROI cap (400% = 4x deposit)
+      const maxEarnings = (member.total_deposit || 0) * 4.0
+      const currentEarnings = assetBalance - (member.total_deposit || 0)
+      if (currentEarnings >= maxEarnings) {
+        skipped++
         continue
       }
 
@@ -139,7 +97,7 @@ export async function POST(request: Request) {
         .single()
 
       if (existing) {
-        skipped++; skipReason.existing++;
+        skipped++
         continue
       }
 
@@ -152,21 +110,16 @@ export async function POST(request: Request) {
       // Apply 50/50 split
       const memberProfit = grossProfit * (memberShare / 100)
 
-      // Insert profit claim
-      // FIX NUMERIC OVERFLOW: Match the cron job perfectly.
-      const roundedAmount = parseFloat(memberProfit.toFixed(2));
-      const roundedBase = parseFloat(basePercentage.toFixed(3));
-      const roundedTotal = parseFloat(totalPercentage.toFixed(3));
-
+      // Insert profit claim with 50% already applied
       const { error: insertError } = await supabaseAdmin
         .from('profit_claims')
         .insert({
           user_id: member.id,
           daily_profit_id: profitRecord.id,
-          amount: roundedAmount,
-          base_percentage: roundedBase,
-          booster_percentage: 0,
-          total_percentage: roundedTotal,
+          amount: memberProfit,
+          base_percentage: basePercentage,
+          booster_percentage: boosterPercentage,
+          total_percentage: totalPercentage,
           status: 'available',
           claimed_at: null
         })
@@ -183,14 +136,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Profit generated for ${generated} members (Skipped: ${skipped}. Under $50: ${skipReason.lessThan50}, Hit 400%: ${skipReason.roiCap}, Already Claimed: ${skipReason.existing}, No Wallet: ${skipReason.noWallet})`,
+      message: `Profit generated for ${generated} members`,
       date: profitDate,
       globalPercentage: (globalPercentage * 100).toFixed(2) + '%',
       memberShare: memberShare + '%',
       companyShare: companyShare + '%',
       generated,
       skipped,
-      skipReason,
       results
     })
 

@@ -128,10 +128,7 @@ export async function GET(request: Request) {
 
     if (existingDailyProfit) {
       dailyProfitId = existingDailyProfit.id
-      // Fix ghost bug: If database holds old fraction data (0.015), convert it to 1.50
-      globalProfitPercentage = existingDailyProfit.global_profit_percentage < 0.1 && existingDailyProfit.global_profit_percentage > 0 
-        ? existingDailyProfit.global_profit_percentage * 100 
-        : existingDailyProfit.global_profit_percentage
+      globalProfitPercentage = existingDailyProfit.global_profit_percentage
     } else {
       // Create new daily_profit record with random rate
       const randomRate = Math.random() * 0.01 + 0.01 // 1% to 2%
@@ -161,10 +158,9 @@ export async function GET(request: Request) {
     }
 
     // Calculate profit
-    // STRATEGIC BOOSTER DIHAPUS (SESUAI INSTRUKSI OWNER)
-    const boosterPercentage = 0
-    const basePercentage = globalProfitPercentage * 100 // Member gets 100%, no profit sharing
-    const totalPercentage = basePercentage
+    const boosterPercentage = profile.booster_percentage || 0
+    const basePercentage = globalProfitPercentage * 100 * 0.5 // Member gets 50%
+    const totalPercentage = basePercentage + boosterPercentage
     
     let profitAmount = wallet.balance * (totalPercentage / 100)
     

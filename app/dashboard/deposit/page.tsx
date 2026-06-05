@@ -248,44 +248,27 @@ export default function DepositPage() {
 
             {/* Crypto Selection */}
             <div>
-              <label className="text-[#F5F5F7] font-semibold mb-3 block">Select Cryptocurrency</label>
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <label className="text-white font-medium mb-2 block">Select Cryptocurrency</label>
+              <div className="grid grid-cols-2 gap-2">
                 {[
-                  { symbol: 'BTC', name: 'Bitcoin', logo: 'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=029' },
-                  { symbol: 'ETH', name: 'Ethereum', logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=029' },
-                  { symbol: 'USDTTRC20', name: 'USDT (TRC20)', logo: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=029' },
-                  { symbol: 'USDTBSC', name: 'USDT (BEP20)', logo: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=029' },
-                  { symbol: 'BNB', name: 'BNB (BSC)', logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=029' },
-                  { symbol: 'LTC', name: 'Litecoin', logo: 'https://cryptologos.cc/logos/litecoin-ltc-logo.svg?v=029' }
+                  { symbol: 'BTC', name: 'Bitcoin' },
+                  { symbol: 'ETH', name: 'Ethereum' },
+                  { symbol: 'USDTTRC20', name: 'USDT (TRC20)' },
+                  { symbol: 'USDTBSC', name: 'USDT (BEP20)' },
+                  { symbol: 'BNB', name: 'BNB (BSC)' },
+                  { symbol: 'LTC', name: 'Litecoin' }
                 ].map((crypto) => (
                   <button
                     key={crypto.symbol}
                     onClick={() => setSelectedCrypto(crypto.symbol)}
-                    className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl text-left transition-all duration-200 border ${
+                    className={`p-4 rounded-xl text-left transition-all duration-200 border-2 ${
                       selectedCrypto === crypto.symbol
-                        ? 'bg-[#2C2C2E] border-[#0071E3]'
-                        : 'bg-[#1D1D1F] border-[#333336] hover:border-[#55555A]'
+                        ? 'bg-blue-600 text-white border-blue-400 shadow-lg shadow-blue-500/50 scale-105'
+                        : 'bg-slate-800 text-slate-200 border-slate-700 hover:border-blue-500 hover:bg-slate-700/80 hover:text-white'
                     }`}
                   >
-                    <div className="flex-shrink-0 bg-white p-1.5 rounded-full shadow-sm">
-                      <img src={crypto.logo} alt={crypto.symbol} className="w-6 h-6 sm:w-8 sm:h-8 object-contain" />
-                    </div>
-                    <div>
-                      <p className={`font-semibold text-sm sm:text-base ${selectedCrypto === crypto.symbol ? 'text-[#F5F5F7]' : 'text-[#A1A1A6]'}`}>
-                        {crypto.symbol.replace('TRC20', '').replace('BSC', '')}
-                      </p>
-                      <p className={`text-[10px] sm:text-xs ${selectedCrypto === crypto.symbol ? 'text-[#86868B]' : 'text-[#55555A]'}`}>
-                        {crypto.name}
-                      </p>
-                    </div>
-                    
-                    {selectedCrypto === crypto.symbol && (
-                      <div className="ml-auto">
-                        <div className="bg-[#34C759] rounded-full p-0.5 shadow-md">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        </div>
-                      </div>
-                    )}
+                    <p className="font-semibold">{crypto.symbol.replace('TRC20', '').replace('BSC', '')}</p>
+                    <p className="text-xs text-slate-400">{crypto.name}</p>
                   </button>
                 ))}
               </div>

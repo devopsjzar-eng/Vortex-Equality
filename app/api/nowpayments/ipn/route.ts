@@ -249,7 +249,17 @@ async function creditUserWallet(userId: string, amount: number) {
     const newBalance = Number(wallet.balance) + amount
     const newCapital = Number(wallet.initial_capital) + amount
     
-    // Fetch current profile to check if it's a top up
+    await supabaseAdmin
+      .from('wallets')
+      .update({
+        balance: newBalance,
+        initial_capital: newCapital,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', wallet.id)
+    
+    // Update profile total_deposit
+    // IMPORTANT: Check if this is a TOP UP (existing deposit) - if so, reset booster
     const { data: currentProfile } = await supabaseAdmin
       .from('profiles')
       .select('total_deposit, booster_percentage')
@@ -258,28 +268,19 @@ async function creditUserWallet(userId: string, amount: number) {
 
     const existingDeposit = Number(currentProfile?.total_deposit || 0)
     const isTopUp = existingDeposit > 0 // Already has deposit = this is a top up
-    
-    // UPDATE WALLET: If Top-up, RESET 400% tracker (total_profit_earned = 0, cap_reached = false)
-    await supabaseAdmin
-      .from('wallets')
-      .update({
-        balance: newBalance,
-        initial_capital: newCapital,
-        total_profit_earned: isTopUp ? 0 : wallet.total_profit_earned, // Force 0 or keep existing
-        cap_reached: isTopUp ? false : wallet.cap_reached,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', wallet.id)
-    
-    // Update profile total_deposit
-    // IMPORTANT: Check if this is a TOP UP (existing deposit) - if so, reset booster
-    // Booster logic removed
+    const currentBooster = Number(currentProfile?.booster_percentage || 0)
+
+    // If TOP UP and has booster, RESET booster to 0
+    if (isTopUp && currentBooster > 0) {
+      console.log(`[NOWPayments IPN] TOP UP detected for user ${userId}. Resetting booster from ${currentBooster}% to 0%`)
+    }
 
     await supabaseAdmin
       .from('profiles')
       .update({
         total_deposit: existingDeposit + amount,
-        // Booster logic removed
+        // RESET BOOSTER if this is a TOP UP
+        booster_percentage: isTopUp ? 0 : (currentProfile?.booster_percentage || 0),
         updated_at: new Date().toISOString(),
       })
       .eq('id', userId)
@@ -291,7 +292,8 @@ async function creditUserWallet(userId: string, amount: number) {
     // Process sponsor bonuses
     await processSponsorBonus(userId, amount)
     
-    // Booster logic removed
+    // Check and update booster for referrer
+    await updateReferrerBooster(userId, amount)
     
     // UPDATE UPLINE STATISTICS (total_direct_referrals & group_turnover)
     await updateUplineStatistics(userId)

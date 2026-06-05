@@ -80,44 +80,24 @@ export async function POST(request: NextRequest) {
         console.log(`[Withdrawal] User ROI: ${roi.toFixed(2)}%, Fee: ${feePercentage}%`)
       }
       
-      // LOGIKA CERDAS: Memotong Modal (Capital) vs Memotong Profit
-      const { data: walletToUpdate } = await supabaseAdmin
-        .from('wallets')
-        .select('balance, initial_capital')
-        .eq('user_id', transaction.user_id)
-        .eq('wallet_type', 'asset')
+      // Update total_deposit (mengurangi modal yang ditarik)
+      const { data: profile2 } = await supabaseAdmin
+        .from('profiles')
+        .select('initial_capital')
+        .eq('id', transaction.user_id)
         .single()
 
-      if (walletToUpdate) {
-        // Saldo sebelum WD di-approve (saat request, saldo sudah dikurangi di frontend, tapi modal aktif belum)
-        // Saldo saat request: balance_sekarang + amount_yang_ditarik
-        const balanceBeforeWd = walletToUpdate.balance + transaction.amount;
-        const modalAktif = walletToUpdate.initial_capital || 0;
-        
-        // Profit mengendap = Saldo sebelum WD - Modal Aktif
-        const profitMengendap = Math.max(0, balanceBeforeWd - modalAktif);
-
-        let newInitialCapital = modalAktif;
-
-        if (transaction.amount > profitMengendap) {
-          // Member menarik uang lebih besar dari profit yang mengendap!
-          // Berarti dia MEMAKAN MODALNYA SENDIRI.
-          const modalYangDimakan = transaction.amount - profitMengendap;
-          newInitialCapital = Math.max(0, modalAktif - modalYangDimakan);
-          console.log(`[Withdrawal] Member memakan modal. Modal turun dari ${modalAktif} menjadi ${newInitialCapital}`);
-        } else {
-          // Member hanya menarik profitnya saja. Modal Aktif TETAP UTUH.
-          console.log(`[Withdrawal] Member hanya menarik profit. Modal tetap ${modalAktif}`);
-        }
-
-        // Update Modal Aktif (initial_capital) di tabel wallets
+      if (profile2) {
+        // Jika withdrawal dari initial_capital, kurangi initial_capital
+        // (tapi jangan sampai negatif)
+        const newInitialCapital = Math.max(0, (profile2.initial_capital || 0) - transaction.amount)
         await supabaseAdmin
-          .from('wallets')
+          .from('profiles')
           .update({ 
             initial_capital: newInitialCapital,
             updated_at: new Date().toISOString()
           })
-          .eq('user_id', transaction.user_id)
+          .eq('id', transaction.user_id)
       }
     }
 
