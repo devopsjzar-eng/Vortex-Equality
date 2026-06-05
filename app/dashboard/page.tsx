@@ -187,6 +187,16 @@ export default function DashboardPage() {
         .eq('profit_claims.user_id', user.id)
         .maybeSingle()
       
+      // ALWAYS set the global rate if available
+      if (dailyProfitData && dailyProfitData.global_profit_percentage) {
+        let rawRate = dailyProfitData.global_profit_percentage;
+        // Handle legacy fraction bug
+        if (rawRate < 0.1 && rawRate > 0) {
+          rawRate = rawRate * 100;
+        }
+        setTodayRate(rawRate);
+      }
+
       if (dailyProfitData?.profit_claims && dailyProfitData.profit_claims.length > 0) {
         const claim = dailyProfitData.profit_claims[0]
         setTodayProfit({
@@ -197,13 +207,7 @@ export default function DashboardPage() {
           created_at: ''
         })
       } else {
-        setTodayProfit({ 
-          status: 'available', 
-          amount: 0, 
-          total_percentage: 0,
-          id: null,
-          created_at: ''
-        })
+        setTodayProfit(null)
       }
 
     } catch (error) {
