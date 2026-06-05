@@ -238,84 +238,110 @@ export default function WithdrawPage() {
         </CardHeader>
         <CardContent className="space-y-6">
 
-          {/* Wallet Selection */}
+          {/* Wallet Selection - Premium Apple Matte Style */}
           <div className="grid gap-4 sm:grid-cols-2">
             <button
               onClick={() => setSelectedWallet('asset')}
               className={cn(
-                'relative flex flex-col gap-3 rounded-xl border-2 p-4 text-left transition-all',
+                'relative flex flex-col gap-4 rounded-[20px] p-5 text-left transition-all duration-200 overflow-hidden',
                 selectedWallet === 'asset'
-                  ? 'border-slate-1000 bg-slate-1000/10'
-                  : 'border-slate-700 bg-slate-800 hover:border-slate-600'
+                  ? 'bg-[#0071E3] border border-[#0071E3] shadow-lg shadow-blue-900/20'
+                  : 'bg-[#1D1D1F] border border-[#333336] hover:bg-[#2C2C2E]'
               )}
             >
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-gradient-to-br from-slate-1000 to-blue-600 p-3">
-                  <WalletIcon className="h-5 w-5 text-white" />
+              <div className="flex items-start justify-between w-full">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "rounded-full p-2.5",
+                    selectedWallet === 'asset' ? "bg-white/20" : "bg-[#2C2C2E]"
+                  )}>
+                    <WalletIcon className={cn("h-5 w-5", selectedWallet === 'asset' ? "text-white" : "text-[#A1A1A6]")} />
+                  </div>
+                  <div>
+                    <p className={cn("font-medium text-sm", selectedWallet === 'asset' ? "text-blue-50" : "text-[#A1A1A6]")}>
+                      Asset Wallet
+                    </p>
+                    <p className={cn("text-2xl font-bold tracking-tight", selectedWallet === 'asset' ? "text-white" : "text-[#F5F5F7]")}>
+                      {formatCurrency(assetWallet?.balance || 0)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-white">Asset Wallet</p>
-                  <p className="text-xl font-bold text-slate-400">{formatCurrency(assetWallet?.balance || 0)}</p>
-                </div>
-              </div>
-              <div className="rounded-lg bg-black/30 p-2 text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Your ROI:</span>
-                  <span className={cn('font-bold', roi >= 100 ? 'text-blue-400' : 'text-slate-400')}>
-                    {roi.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Admin fee:</span>
-                  <span className={cn('font-bold', roi >= 100 ? 'text-blue-400' : 'text-blue-400')}>
-                    {roi >= 100 ? '5%' : '20%'}
-                  </span>
-                </div>
-                {roi < 100 && (
-                  <p className="text-[10px] text-slate-500">Fee drops to 5% after 100% ROI</p>
+                {selectedWallet === 'asset' && (
+                  <div className="bg-white rounded-full p-0.5 shadow-sm">
+                    <CheckCircle2 className="h-4 w-4 text-[#0071E3]" />
+                  </div>
                 )}
               </div>
-              {selectedWallet === 'asset' && (
-                <div className="absolute right-3 top-3">
-                  <CheckCircle className="h-5 w-5 text-slate-1000" />
+              
+              <div className={cn(
+                "rounded-xl p-3 text-xs space-y-1.5 w-full",
+                selectedWallet === 'asset' ? "bg-black/10 text-blue-50" : "bg-black/20 text-[#86868B]"
+              )}>
+                <div className="flex justify-between items-center">
+                  <span>Your ROI:</span>
+                  <span className="font-semibold">{roi.toFixed(1)}%</span>
                 </div>
-              )}
+                <div className="flex justify-between items-center">
+                  <span>Admin fee:</span>
+                  <span className="font-semibold">{roi >= 100 ? '5%' : '20%'}</span>
+                </div>
+                {roi < 100 && (
+                  <p className={cn("text-[10px] mt-2", selectedWallet === 'asset' ? "text-blue-200/70" : "text-[#55555A]")}>
+                    Fee drops to 5% after 100% ROI
+                  </p>
+                )}
+              </div>
             </button>
 
             <button
               onClick={() => setSelectedWallet('bonus')}
               className={cn(
-                'relative flex flex-col gap-3 rounded-xl border-2 p-4 text-left transition-all',
+                'relative flex flex-col gap-4 rounded-[20px] p-5 text-left transition-all duration-200 overflow-hidden',
                 selectedWallet === 'bonus'
-                  ? 'border-blue-500 bg-blue-500/10'
-                  : 'border-slate-700 bg-slate-800 hover:border-slate-600'
+                  ? 'bg-[#0071E3] border border-[#0071E3] shadow-lg shadow-blue-900/20'
+                  : 'bg-[#1D1D1F] border border-[#333336] hover:bg-[#2C2C2E]'
               )}
             >
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-3">
-                  <PiggyBank className="h-5 w-5 text-white" />
+              <div className="flex items-start justify-between w-full">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "rounded-full p-2.5",
+                    selectedWallet === 'bonus' ? "bg-white/20" : "bg-[#2C2C2E]"
+                  )}>
+                    <Gift className={cn("h-5 w-5", selectedWallet === 'bonus' ? "text-white" : "text-[#A1A1A6]")} />
+                  </div>
+                  <div>
+                    <p className={cn("font-medium text-sm", selectedWallet === 'bonus' ? "text-blue-50" : "text-[#A1A1A6]")}>
+                      Bonus Wallet
+                    </p>
+                    <p className={cn("text-2xl font-bold tracking-tight", selectedWallet === 'bonus' ? "text-white" : "text-[#F5F5F7]")}>
+                      {formatCurrency(bonusWallet?.balance || 0)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-white">Bonus Wallet</p>
-                  <p className="text-xl font-bold text-blue-400">{formatCurrency(bonusWallet?.balance || 0)}</p>
-                </div>
+                {selectedWallet === 'bonus' && (
+                  <div className="bg-white rounded-full p-0.5 shadow-sm">
+                    <CheckCircle2 className="h-4 w-4 text-[#0071E3]" />
+                  </div>
+                )}
               </div>
-              <div className="rounded-lg bg-black/30 p-2 text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Source:</span>
-                  <span className="text-slate-300 font-medium">Sponsor + Reward</span>
+              
+              <div className={cn(
+                "rounded-xl p-3 text-xs space-y-1.5 w-full",
+                selectedWallet === 'bonus' ? "bg-black/10 text-blue-50" : "bg-black/20 text-[#86868B]"
+              )}>
+                <div className="flex justify-between items-center">
+                  <span>Source:</span>
+                  <span className="font-semibold">Sponsor + Reward</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Admin fee:</span>
-                  <span className="font-bold text-blue-400">5% (Flat)</span>
+                <div className="flex justify-between items-center">
+                  <span>Admin fee:</span>
+                  <span className="font-semibold">5% (Flat)</span>
                 </div>
-                <p className="text-[10px] text-slate-500">Withdraw anytime</p>
+                <p className={cn("text-[10px] mt-2", selectedWallet === 'bonus' ? "text-blue-200/70" : "text-[#55555A]")}>
+                  Withdraw anytime
+                </p>
               </div>
-              {selectedWallet === 'bonus' && (
-                <div className="absolute right-3 top-3">
-                  <CheckCircle className="h-5 w-5 text-blue-500" />
-                </div>
-              )}
             </button>
           </div>
 
@@ -359,18 +385,18 @@ export default function WithdrawPage() {
                       : 'bg-[#1D1D1F] border-[#333336] hover:border-[#55555A]'
                   )}
                 >
-                  <div className="bg-white p-1.5 rounded-full mb-2 relative">
-                    <img src={net.logo} alt={net.name} className="w-5 h-5 object-contain" />
+                  <div className="bg-white p-2 rounded-full mb-2 relative shadow-sm">
+                    <img src={net.logo} alt={net.name} className="w-6 h-6 object-contain" />
                     
                     {selectedNetwork === net.id && (
-                      <div className="absolute -top-1 -right-1 bg-[#0071E3] rounded-full p-0.5 border-2 border-[#2C2C2E]">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      <div className="absolute -top-1 -right-1 bg-[#34C759] rounded-full p-0.5 border-2 border-[#2C2C2E] shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
                       </div>
                     )}
                   </div>
                   
                   <span className={cn(
-                    'text-xs font-semibold',
+                    'text-xs sm:text-sm font-semibold mt-1',
                     selectedNetwork === net.id ? 'text-[#F5F5F7]' : 'text-[#A1A1A6]'
                   )}>
                     {net.name}
