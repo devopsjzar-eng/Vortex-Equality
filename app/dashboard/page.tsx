@@ -541,7 +541,7 @@ export default function DashboardPage() {
               ) : !isProfitTime ? (
                 <>
                   <p className="text-4xl sm:text-5xl font-bold tracking-tighter text-[#55555A]">
-                    +{todayProfit?.total_percentage ? (todayProfit.total_percentage < 0.1 ? (todayProfit.total_percentage * 100).toFixed(2) : todayProfit.total_percentage.toFixed(2)) : todayRate}%
+                    +{todayProfit?.total_percentage ? (todayProfit.total_percentage < 0.1 ? (todayProfit.total_percentage * 100).toFixed(2) : todayProfit.total_percentage.toFixed(2)) : (todayRate < 0.1 ? (todayRate * 100).toFixed(2) : todayRate)}%
                   </p>
                   <p className="text-[11px] sm:text-xs font-medium text-[#86868B] mt-1">
                     Today's Rate: <span className="text-[#A1A1A6]">Waiting for profit hours</span>
