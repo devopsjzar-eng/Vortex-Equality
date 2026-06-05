@@ -111,8 +111,9 @@ export async function POST(request: Request) {
       const activeCapital = wallet.initial_capital || 0
       const assetBalance = wallet.balance || 0
       
-      // SYARAT MINIMAL ASSET AKTIF $50
-      if (activeCapital < 50 || assetBalance <= 0) {
+      // SYARAT MINIMAL ASSET AKTIF $50 (Membaca Total Deposit sesuai instruksi Owner)
+      const totalDeposit = member.total_deposit || 0
+      if (totalDeposit < 50) {
         skipped++; skipReason.lessThan50++;
         continue
       }
