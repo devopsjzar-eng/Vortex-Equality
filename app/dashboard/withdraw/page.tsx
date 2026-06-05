@@ -23,12 +23,12 @@ import { cn } from '@/lib/utils'
 const MIN_WITHDRAWAL = 10
 
 const networkOptions = [
-  { id: 'bep20',     name: 'BEP20 (BSC)',       desc: 'Binance Smart Chain' },
-  { id: 'trc20',     name: 'TRC20 (TRON)',       desc: 'TRON Network'       },
-  { id: 'erc20',     name: 'ERC20 (Ethereum)',   desc: 'Ethereum Network'   },
-  { id: 'polygon',   name: 'Polygon (MATIC)',    desc: 'Polygon Network'    },
-  { id: 'arbitrum',  name: 'Arbitrum',           desc: 'Arbitrum One'       },
-  { id: 'optimism',  name: 'Optimism',           desc: 'Optimism Network'   },
+  { id: 'bep20',     name: 'BEP20 (BSC)',       desc: 'Binance Smart Chain', logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=029' },
+  { id: 'trc20',     name: 'TRC20 (TRON)',      desc: 'TRON Network',        logo: 'https://cryptologos.cc/logos/tron-trx-logo.svg?v=029' },
+  { id: 'erc20',     name: 'ERC20 (Ethereum)',  desc: 'Ethereum Network',    logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=029' },
+  { id: 'polygon',   name: 'Polygon (MATIC)',   desc: 'Polygon Network',     logo: 'https://cryptologos.cc/logos/polygon-matic-logo.svg?v=029' },
+  { id: 'arbitrum',  name: 'Arbitrum',          desc: 'Arbitrum One',        logo: 'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=029' },
+  { id: 'optimism',  name: 'Optimism',          desc: 'Optimism Network',    logo: 'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg?v=029' },
 ]
 
 export default function WithdrawPage() {
@@ -345,27 +345,36 @@ export default function WithdrawPage() {
           </div>
 
           {/* Network */}
-          <div className="space-y-2">
-            <Label className="text-slate-300">Network USDT</Label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="space-y-3">
+            <Label className="text-[#F5F5F7] font-semibold mb-1 block">Select Network</Label>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {networkOptions.map((net) => (
                 <button
                   key={net.id}
                   onClick={() => setSelectedNetwork(net.id)}
                   className={cn(
-                    'flex flex-col rounded-xl border-2 p-3 text-left transition-all',
+                    'flex flex-col items-center text-center justify-center rounded-xl border p-4 transition-all duration-200',
                     selectedNetwork === net.id
-                      ? 'border-primary bg-primary/10'
-                      : 'border-slate-700 bg-slate-800 hover:border-slate-600'
+                      ? 'bg-[#2C2C2E] border-[#0071E3]'
+                      : 'bg-[#1D1D1F] border-[#333336] hover:border-[#55555A]'
                   )}
                 >
+                  <div className="bg-white p-1.5 rounded-full mb-2 relative">
+                    <img src={net.logo} alt={net.name} className="w-5 h-5 object-contain" />
+                    
+                    {selectedNetwork === net.id && (
+                      <div className="absolute -top-1 -right-1 bg-[#0071E3] rounded-full p-0.5 border-2 border-[#2C2C2E]">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      </div>
+                    )}
+                  </div>
+                  
                   <span className={cn(
-                    'text-xs font-bold',
-                    selectedNetwork === net.id ? 'text-primary' : 'text-white'
+                    'text-xs font-semibold',
+                    selectedNetwork === net.id ? 'text-[#F5F5F7]' : 'text-[#A1A1A6]'
                   )}>
                     {net.name}
                   </span>
-                  <span className="text-[10px] text-slate-500 mt-0.5">{net.desc}</span>
                 </button>
               ))}
             </div>
