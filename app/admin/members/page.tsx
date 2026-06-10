@@ -14,16 +14,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Users, Search, Eye } from 'lucide-react'
+import { Users, Search, Eye, Ban, ShieldCheck, GitBranch, Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
 
 type MemberWithWallets = Profile & {
   wallets: Wallet[]
+  is_banned?: boolean
 }
 
 export default function MembersPage() {
@@ -31,105 +33,134 @@ export default function MembersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selectedMember, setSelectedMember] = useState<MemberWithWallets | null>(null)
+
+  // Upline shifter state
+  const [uplineMember, setUplineMember] = useState<MemberWithWallets | null>(null)
+  const [newUplineSearch, setNewUplineSearch] = useState('')
+  const [newUplineResult, setNewUplineResult] = useState<{ id: string; email: string; full_name: string } | null>(null)
+  const [uplineSearching, setUplineSearching] = useState(false)
+  const [uplineShifting, setUplineShifting] = useState(false)
+  const [uplineMessage, setUplineMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
   const supabase = createClient()
 
   const fetchMembers = useCallback(async () => {
     const { data } = await supabase
       .from('profiles')
-      .select(`
-        *,
-        wallets(*)
-      `)
+      .select(`*, wallets(*)`)
       .eq('is_admin', false)
       .order('created_at', { ascending: false })
-    
-    if (data) setMembers(data as MemberWithWallets[])
+
+    if (data) {
+      const ids = data.map(member => member.id)
+      const { data: statuses } = await supabase
+        .from('user_account_status')
+        .select('user_id, is_banned')
+        .in('user_id', ids)
+
+      const statusByUser = new Map((statuses || []).map(s => [s.user_id, s.is_banned]))
+      setMembers(data.map(member => ({
+        ...member,
+        is_banned: statusByUser.get(member.id) || false,
+      })) as MemberWithWallets[])
+    }
     setLoading(false)
   }, [supabase])
 
+  const setBanStatus = async (member: MemberWithWallets, isBanned: boolean) => {
+    const response = await fetch('/api/admin/member/ban', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: member.id, isBanned, reason: isBanned ? 'Admin action' : null }),
+    })
+    if (response.ok) await fetchMembers()
+  }
+
+  const searchNewUpline = async () => {
+    if (!newUplineSearch.trim()) return
+    setUplineSearching(true)
+    setNewUplineResult(null)
+    setUplineMessage(null)
+    try {
+      const res = await fetch(`/api/admin/member/search?email=${encodeURIComponent(newUplineSearch.trim())}`)
+      const data = await res.json()
+      if (data.success && data.member) {
+        if (data.member.id === uplineMember?.id) {
+          setUplineMessage({ type: 'error', text: 'Cannot set a user as their own upline.' })
+        } else {
+          setNewUplineResult(data.member)
+        }
+      } else {
+        setUplineMessage({ type: 'error', text: 'Member not found.' })
+      }
+    } catch {
+      setUplineMessage({ type: 'error', text: 'Search failed.' })
+    } finally {
+      setUplineSearching(false)
+    }
+  }
+
+  const confirmUplineShift = async (removeUpline = false) => {
+    if (!uplineMember) return
+    if (!removeUpline && !newUplineResult) return
+
+    setUplineShifting(true)
+    setUplineMessage(null)
+    try {
+      const res = await fetch('/api/admin/member/change-upline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: uplineMember.id,
+          newUplineId: removeUpline ? null : newUplineResult!.id,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setUplineMessage({ type: 'success', text: removeUpline ? 'Upline removed. Member is now a root member.' : `Upline changed to ${newUplineResult!.email} successfully.` })
+        await fetchMembers()
+        setNewUplineResult(null)
+        setNewUplineSearch('')
+      } else {
+        setUplineMessage({ type: 'error', text: data.error || 'Failed to shift upline.' })
+      }
+    } catch {
+      setUplineMessage({ type: 'error', text: 'Request failed.' })
+    } finally {
+      setUplineShifting(false)
+    }
+  }
+
   useEffect(() => {
     fetchMembers()
-
-    // Subscribe to real-time updates on profiles table
-    const profilesSubscription = supabase
-      .channel('profiles-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'profiles',
-          filter: 'is_admin=eq.false',
-        },
-        async (payload) => {
-          // Re-fetch all members when any profile changes
-          await fetchMembers()
-        }
-      )
+    const profilesSub = supabase.channel('profiles-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'is_admin=eq.false' }, fetchMembers)
       .subscribe()
-
-    // Subscribe to real-time updates on wallets table
-    const walletsSubscription = supabase
-      .channel('wallets-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'wallets',
-        },
-        async (payload) => {
-          // Re-fetch all members when any wallet changes
-          await fetchMembers()
-        }
-      )
+    const walletsSub = supabase.channel('wallets-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wallets' }, fetchMembers)
       .subscribe()
-
-    // Subscribe to transactions for indirect updates
-    const transactionsSubscription = supabase
-      .channel('transactions-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'transactions',
-        },
-        async (payload) => {
-          // Debounce to avoid too many re-fetches
-          await fetchMembers()
-        }
-      )
-      .subscribe()
-
-    // Cleanup subscriptions on unmount
     return () => {
-      profilesSubscription.unsubscribe()
-      walletsSubscription.unsubscribe()
-      transactionsSubscription.unsubscribe()
+      profilesSub.unsubscribe()
+      walletsSub.unsubscribe()
     }
   }, [supabase, fetchMembers])
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount)
-  }
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })
-  }
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 
   const filteredMembers = members.filter(member =>
     member.email.toLowerCase().includes(search.toLowerCase()) ||
     member.full_name?.toLowerCase().includes(search.toLowerCase()) ||
     member.referral_code.toLowerCase().includes(search.toLowerCase())
   )
+
+  // Find current upline name for the shift dialog
+  const currentUpline = uplineMember?.referred_by
+    ? members.find(m => m.id === uplineMember.referred_by)
+    : null
 
   if (loading) {
     return (
@@ -146,13 +177,13 @@ export default function MembersPage() {
         <p className="text-muted-foreground">Manage all platform members</p>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="apple-matte-surface">
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             All Members ({members.length})
           </CardTitle>
-          <div className="relative w-64">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search members..."
@@ -163,58 +194,99 @@ export default function MembersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Member</TableHead>
-                <TableHead>Referral Code</TableHead>
-                <TableHead>Rank</TableHead>
-                <TableHead>Total Deposit</TableHead>
-                <TableHead>Asset Balance</TableHead>
-                <TableHead>Bonus Balance</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredMembers.map((member) => {
-                const assetWallet = member.wallets.find(w => w.wallet_type === 'asset')
-                const bonusWallet = member.wallets.find(w => w.wallet_type === 'bonus')
-                
-                return (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{member.full_name || 'N/A'}</p>
-                        <p className="text-sm text-muted-foreground">{member.email}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <code className="rounded bg-muted px-2 py-1 text-sm">{member.referral_code}</code>
-                    </TableCell>
-                    <TableCell>
-                      <span className="rounded-full bg-primary/10 px-2 py-1 text-sm font-medium text-primary">
-                        {member.rank}
-                      </span>
-                    </TableCell>
-                    <TableCell>{formatCurrency(member.total_deposit)}</TableCell>
-                    <TableCell className="text-success">{formatCurrency(assetWallet?.balance || 0)}</TableCell>
-                    <TableCell className="text-warning">{formatCurrency(bonusWallet?.balance || 0)}</TableCell>
-                    <TableCell>{formatDate(member.created_at)}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedMember(member)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+          <div className="overflow-x-auto">
+            <Table className="min-w-[1100px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Member</TableHead>
+                  <TableHead>Referral Code</TableHead>
+                  <TableHead>Upline</TableHead>
+                  <TableHead>Rank</TableHead>
+                  <TableHead>Total Deposit</TableHead>
+                  <TableHead>Asset Balance</TableHead>
+                  <TableHead>Bonus Balance</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredMembers.map((member) => {
+                  const assetWallet = member.wallets.find(w => w.wallet_type === 'asset')
+                  const bonusWallet = member.wallets.find(w => w.wallet_type === 'bonus')
+                  const uplineProfile = member.referred_by
+                    ? members.find(m => m.id === member.referred_by)
+                    : null
+
+                  return (
+                    <TableRow key={member.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{member.full_name || 'N/A'}</p>
+                          <p className="text-sm text-muted-foreground">{member.email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <code className="rounded bg-muted px-2 py-1 text-sm">{member.referral_code}</code>
+                      </TableCell>
+                      <TableCell>
+                        {uplineProfile ? (
+                          <div>
+                            <p className="text-sm font-medium">{uplineProfile.full_name || uplineProfile.email}</p>
+                            <p className="text-xs text-muted-foreground">{uplineProfile.referral_code}</p>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">— none —</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="rounded-full bg-primary/10 px-2 py-1 text-sm font-medium text-primary">
+                          {member.rank}
+                        </span>
+                      </TableCell>
+                      <TableCell>{formatCurrency(member.total_deposit)}</TableCell>
+                      <TableCell className="text-success">{formatCurrency(assetWallet?.balance || 0)}</TableCell>
+                      <TableCell className="text-warning">{formatCurrency(bonusWallet?.balance || 0)}</TableCell>
+                      <TableCell>{formatDate(member.created_at)}</TableCell>
+                      <TableCell>
+                        <span className={member.is_banned ? 'text-destructive' : 'text-success'}>
+                          {member.is_banned ? 'Banned' : 'Active'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedMember(member)} title="View details">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setBanStatus(member, !member.is_banned)}
+                            title={member.is_banned ? 'Unban user' : 'Ban user'}
+                          >
+                            {member.is_banned ? <ShieldCheck className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setUplineMember(member)
+                              setNewUplineSearch('')
+                              setNewUplineResult(null)
+                              setUplineMessage(null)
+                            }}
+                            title="Change upline (Upline Shifter)"
+                          >
+                            <GitBranch className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -262,7 +334,6 @@ export default function MembersPage() {
                   <p className="font-medium text-warning">+{selectedMember.booster_percentage}%</p>
                 </div>
               </div>
-              
               <div className="border-t pt-4">
                 <p className="mb-2 text-sm font-medium">Wallet Balances</p>
                 <div className="grid grid-cols-2 gap-4">
@@ -280,10 +351,104 @@ export default function MembersPage() {
                   </div>
                 </div>
               </div>
-              
               <p className="text-sm text-muted-foreground">
                 Member since {formatDate(selectedMember.created_at)}
               </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Upline Shifter Dialog */}
+      <Dialog open={!!uplineMember} onOpenChange={() => setUplineMember(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GitBranch className="h-5 w-5 text-amber-400" />
+              Upline Shifter
+            </DialogTitle>
+            <DialogDescription>
+              Reassign the sponsor/upline for this member. All group volumes will be recalculated automatically.
+            </DialogDescription>
+          </DialogHeader>
+
+          {uplineMember && (
+            <div className="space-y-4">
+              {/* Target member info */}
+              <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-1">
+                <p className="text-xs text-muted-foreground">Moving member</p>
+                <p className="font-semibold">{uplineMember.full_name || uplineMember.email}</p>
+                <p className="text-sm text-muted-foreground">{uplineMember.email}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Current upline:{' '}
+                  <span className="text-foreground">
+                    {currentUpline
+                      ? `${currentUpline.full_name || currentUpline.email} (${currentUpline.referral_code})`
+                      : '— none —'}
+                  </span>
+                </p>
+              </div>
+
+              {/* Search new upline */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Search new upline by email</p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="new-upline@email.com"
+                    value={newUplineSearch}
+                    onChange={(e) => setNewUplineSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && searchNewUpline()}
+                  />
+                  <Button variant="outline" onClick={searchNewUpline} disabled={uplineSearching}>
+                    {uplineSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Search result */}
+              {newUplineResult && (
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 space-y-1">
+                  <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wide">New upline found</p>
+                  <p className="font-medium">{newUplineResult.full_name || newUplineResult.email}</p>
+                  <p className="text-sm text-muted-foreground">{newUplineResult.email}</p>
+                </div>
+              )}
+
+              {/* Message */}
+              {uplineMessage && (
+                <div className={`rounded-lg p-3 text-sm font-medium ${
+                  uplineMessage.type === 'success'
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'bg-destructive/10 text-destructive border border-destructive/20'
+                }`}>
+                  {uplineMessage.text}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex flex-col gap-2 pt-1">
+                <Button
+                  onClick={() => confirmUplineShift(false)}
+                  disabled={!newUplineResult || uplineShifting}
+                  className="w-full"
+                >
+                  {uplineShifting ? (
+                    <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Shifting...</span>
+                  ) : (
+                    'Confirm Upline Change'
+                  )}
+                </Button>
+                {uplineMember.referred_by && (
+                  <Button
+                    variant="outline"
+                    onClick={() => confirmUplineShift(true)}
+                    disabled={uplineShifting}
+                    className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
+                  >
+                    Remove Upline (Make Root Member)
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

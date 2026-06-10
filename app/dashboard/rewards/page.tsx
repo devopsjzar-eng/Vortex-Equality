@@ -65,7 +65,7 @@ const RANKS = [
   {
     id: 'P2',
     code: 'P2',
-    name: 'P2 RISING',
+    name: 'P2 RANK',
     icon: Sparkles,
     color: 'from-orange-400 to-orange-600',
     borderColor: 'border-orange-500/30',
@@ -83,7 +83,7 @@ const RANKS = [
   {
     id: 'P3',
     code: 'P3',
-    name: 'P3 LEADER',
+    name: 'P3 RANK',
     icon: TrendingUp,
     color: 'from-blue-400 to-blue-600',
     borderColor: 'border-blue-500/30',
@@ -101,7 +101,7 @@ const RANKS = [
   {
     id: 'P4',
     code: 'P4',
-    name: 'P4 MASTER',
+    name: 'P4 RANK',
     icon: Crown,
     color: 'from-purple-400 to-purple-600',
     borderColor: 'border-purple-500/30',
@@ -167,6 +167,15 @@ interface RankQualification {
   } | null
   canClaim: boolean
   newRankAvailable: boolean
+  claimReason?: string
+  nextClaimAvailableAt?: string | null
+  suspendedUntil?: string | null
+  personalAssetWarning?: {
+    rankCode: string
+    required: number
+    current: number
+    message: string
+  } | null
 }
 
 export default function RewardsPage() {
@@ -257,7 +266,7 @@ export default function RewardsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Leadership Career</h1>
-          <p className="text-muted-foreground">Rank rewards and monthly salary</p>
+          <p className="text-muted-foreground">P1-P5 rank progress and monthly salary claims</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchQualification}>
           <RefreshCw className="mr-2 h-4 w-4" />
@@ -301,7 +310,49 @@ export default function RewardsPage() {
         </Card>
       )}
 
-      {/* ALREADY CLAIMED THIS MONTH */}
+      {!qualification?.canClaim && qualification?.claimReason && (
+        <Card className="border-slate-700 bg-slate-900/70">
+          <CardContent className="flex items-center gap-4 p-6">
+            <Lock className="h-8 w-8 text-slate-400" />
+            <div>
+              <h3 className="font-bold">Salary Claim Locked</h3>
+              <p className="text-muted-foreground">{qualification.claimReason}</p>
+              {qualification.nextClaimAvailableAt && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  <Clock className="mr-1 inline h-3 w-3" />
+                  Next claim window: {new Date(qualification.nextClaimAvailableAt).toLocaleDateString('en-US', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </p>
+              )}
+              {qualification.suspendedUntil && (
+                <p className="mt-1 text-sm text-amber-400">
+                  Suspended until {new Date(qualification.suspendedUntil).toLocaleDateString('en-US', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {qualification?.personalAssetWarning && (
+        <Card className="border-amber-500/30 bg-amber-500/10">
+          <CardContent className="p-6">
+            <h3 className="font-bold text-amber-300">Active Asset Required</h3>
+            <p className="mt-1 text-sm text-amber-100/80">{qualification.personalAssetWarning.message}</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {qualification.personalAssetWarning.rankCode} requires {formatCurrency(Number(qualification.personalAssetWarning.required))}. Current Active Asset: {formatCurrency(Number(qualification.personalAssetWarning.current))}.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {qualification?.claimedThisMonth && (
         <Card className="border-blue-500/30 bg-blue-500/10">
           <CardContent className="flex items-center gap-4 p-6">
@@ -316,7 +367,7 @@ export default function RewardsPage() {
               </p>
               <p className="text-sm text-muted-foreground mt-1">
                 <Clock className="inline h-3 w-3 mr-1" />
-                Next claim available on 1st of next month
+                Next claim unlocks 30 days after the last claim unless you rank up sooner.
               </p>
             </div>
           </CardContent>
@@ -361,7 +412,7 @@ export default function RewardsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{formatCurrency(qualification?.groupOmset || 0)}</p>
-                <p className="text-xs text-muted-foreground">Group Omset</p>
+                <p className="text-xs text-muted-foreground">Group Volume</p>
               </div>
               <div>
                 <p className="text-2xl font-bold">{formatCurrency(qualification?.personalAsset || 0)}</p>
@@ -377,7 +428,7 @@ export default function RewardsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Top Legs Performance</CardTitle>
-            <CardDescription>Omset from your direct downlines</CardDescription>
+            <CardDescription>Active Asset volume from your direct downline legs</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-3">
@@ -474,7 +525,7 @@ export default function RewardsPage() {
                               ? 'bg-green-500/20 text-green-500' 
                               : 'bg-muted'
                           }`}>
-                            {(qualification?.directCount || 0) >= rank.requirements.directReferrals ? '✓' : ''} {rank.requirements.directReferrals} Direct
+                            {(qualification?.directCount || 0) >= rank.requirements.directReferrals ? 'Met' : 'Need'} {rank.requirements.directReferrals} Direct
                           </span>
                         )}
                         {rank.requirements.branches > 0 && (
@@ -483,7 +534,7 @@ export default function RewardsPage() {
                               ? 'bg-green-500/20 text-green-500' 
                               : 'bg-muted'
                           }`}>
-                            {qualifiedLegs >= rank.requirements.branches ? '✓' : ''} {rank.requirements.branches} Legs @{formatCurrency(rank.requirements.branchOmset)}
+                            {qualifiedLegs >= rank.requirements.branches ? 'Met' : 'Need'} {rank.requirements.branches} Legs at {formatCurrency(rank.requirements.branchOmset)}
                           </span>
                         )}
                         {rank.requirements.groupOmset > 0 && (
@@ -492,7 +543,7 @@ export default function RewardsPage() {
                               ? 'bg-green-500/20 text-green-500' 
                               : 'bg-muted'
                           }`}>
-                            {(qualification?.groupOmset || 0) >= rank.requirements.groupOmset ? '✓' : ''} {formatCurrency(rank.requirements.groupOmset)} Group
+                            {(qualification?.groupOmset || 0) >= rank.requirements.groupOmset ? 'Met' : 'Need'} {formatCurrency(rank.requirements.groupOmset)} Group
                           </span>
                         )}
                         {rank.requirements.minAsset > 0 && (
@@ -501,7 +552,7 @@ export default function RewardsPage() {
                               ? 'bg-green-500/20 text-green-500' 
                               : 'bg-muted'
                           }`}>
-                            {(qualification?.personalAsset || 0) >= rank.requirements.minAsset ? '✓' : ''} {formatCurrency(rank.requirements.minAsset)} Asset
+                            {(qualification?.personalAsset || 0) >= rank.requirements.minAsset ? 'Met' : 'Need'} {formatCurrency(rank.requirements.minAsset)} Asset
                           </span>
                         )}
                       </div>
@@ -554,7 +605,7 @@ export default function RewardsPage() {
           <CardContent>
             <p className="text-sm text-muted-foreground">
               When you qualify for a new rank, the reward is <strong>immediately available</strong> to claim! 
-              No waiting period for rank promotions.
+              Rank-up claims bypass the current 30-day lock and restart the cycle from the new claim date.
             </p>
           </CardContent>
         </Card>
@@ -568,8 +619,8 @@ export default function RewardsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Every month you can claim your rank salary. If you rank up before the month ends, 
-              the old rank reward is replaced with the <strong>new higher reward</strong>.
+              Every claim locks for 30 days. If Active Asset drops below the claimed rank and is restored later, 
+              the next claim is suspended for one full month.
             </p>
           </CardContent>
         </Card>
@@ -581,7 +632,7 @@ export default function RewardsPage() {
           <div>
             <h3 className="text-lg font-bold">Ready to climb higher?</h3>
             <p className="text-sm text-muted-foreground">
-              Build your team and increase your group omset to unlock bigger rewards!
+              Build your team and increase your group volume to unlock bigger rewards.
             </p>
           </div>
           <Link href="/dashboard/team">

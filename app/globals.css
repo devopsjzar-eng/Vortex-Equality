@@ -4,36 +4,34 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Apple Premium Theme - Vortex Equality Professional Investment Platform */
-  /* Primary: Apple Blue #0071E3 | Background: Shark Dark #1D1D1F */
-  --background: oklch(0.145 0.005 285);
-  --foreground: oklch(0.97 0.005 285);
-  --card: oklch(0.20 0.005 285);
-  --card-foreground: oklch(0.97 0.005 285);
-  --popover: oklch(0.20 0.005 285);
-  --popover-foreground: oklch(0.97 0.005 285);
-  --primary: oklch(0.55 0.19 250);
+  --background: oklch(0.105 0.003 285);
+  --foreground: oklch(0.96 0.004 285);
+  --card: oklch(0.17 0.004 285);
+  --card-foreground: oklch(0.96 0.004 285);
+  --popover: oklch(0.17 0.004 285);
+  --popover-foreground: oklch(0.96 0.004 285);
+  --primary: oklch(0.58 0.18 253);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.25 0.005 285);
-  --secondary-foreground: oklch(0.90 0.005 285);
-  --muted: oklch(0.25 0.005 285);
-  --muted-foreground: oklch(0.65 0.005 285);
-  --accent: oklch(0.25 0.005 285);
-  --accent-foreground: oklch(0.90 0.005 285);
+  --secondary: oklch(0.22 0.004 285);
+  --secondary-foreground: oklch(0.90 0.004 285);
+  --muted: oklch(0.22 0.004 285);
+  --muted-foreground: oklch(0.68 0.004 285);
+  --accent: oklch(0.24 0.004 285);
+  --accent-foreground: oklch(0.92 0.004 285);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.30 0.005 285);
-  --input: oklch(0.25 0.005 285);
-  --ring: oklch(0.55 0.19 250);
-  --chart-1: oklch(0.55 0.19 250);
-  --chart-2: oklch(0.60 0.15 250);
-  --chart-3: oklch(0.50 0.20 250);
-  --chart-4: oklch(0.65 0.10 250);
-  --chart-5: oklch(0.45 0.15 250);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.16 0.005 285);
-  --sidebar-foreground: oklch(0.97 0.005 285);
-  --sidebar-primary: oklch(0.55 0.19 250);
+  --border: oklch(0.27 0.004 285);
+  --input: oklch(0.22 0.004 285);
+  --ring: oklch(0.58 0.18 253);
+  --chart-1: oklch(0.62 0.16 253);
+  --chart-2: oklch(0.70 0.13 150);
+  --chart-3: oklch(0.76 0.14 82);
+  --chart-4: oklch(0.63 0.12 285);
+  --chart-5: oklch(0.65 0.13 28);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.13 0.003 285);
+  --sidebar-foreground: oklch(0.96 0.004 285);
+  --sidebar-primary: oklch(0.58 0.18 253);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.25 0.005 285);
   --sidebar-accent-foreground: oklch(0.90 0.005 285);
@@ -46,34 +44,33 @@
 }
 
 .dark {
-  /* Apple Premium Theme - Dark Mode */
-  --background: oklch(0.145 0.005 285);
-  --foreground: oklch(0.97 0.005 285);
-  --card: oklch(0.20 0.005 285);
-  --card-foreground: oklch(0.97 0.005 285);
-  --popover: oklch(0.20 0.005 285);
-  --popover-foreground: oklch(0.97 0.005 285);
-  --primary: oklch(0.55 0.19 250);
+  --background: oklch(0.105 0.003 285);
+  --foreground: oklch(0.96 0.004 285);
+  --card: oklch(0.17 0.004 285);
+  --card-foreground: oklch(0.96 0.004 285);
+  --popover: oklch(0.17 0.004 285);
+  --popover-foreground: oklch(0.96 0.004 285);
+  --primary: oklch(0.58 0.18 253);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.25 0.005 285);
-  --secondary-foreground: oklch(0.90 0.005 285);
-  --muted: oklch(0.25 0.005 285);
-  --muted-foreground: oklch(0.65 0.005 285);
-  --accent: oklch(0.25 0.005 285);
-  --accent-foreground: oklch(0.90 0.005 285);
+  --secondary: oklch(0.22 0.004 285);
+  --secondary-foreground: oklch(0.90 0.004 285);
+  --muted: oklch(0.22 0.004 285);
+  --muted-foreground: oklch(0.68 0.004 285);
+  --accent: oklch(0.24 0.004 285);
+  --accent-foreground: oklch(0.92 0.004 285);
   --destructive: oklch(0.396 0.141 25.723);
   --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.30 0.005 285);
-  --input: oklch(0.25 0.005 285);
-  --ring: oklch(0.55 0.19 250);
-  --chart-1: oklch(0.55 0.19 250);
-  --chart-2: oklch(0.60 0.15 250);
-  --chart-3: oklch(0.50 0.20 250);
-  --chart-4: oklch(0.65 0.10 250);
-  --chart-5: oklch(0.45 0.15 250);
-  --sidebar: oklch(0.16 0.005 285);
-  --sidebar-foreground: oklch(0.97 0.005 285);
-  --sidebar-primary: oklch(0.55 0.19 250);
+  --border: oklch(0.27 0.004 285);
+  --input: oklch(0.22 0.004 285);
+  --ring: oklch(0.58 0.18 253);
+  --chart-1: oklch(0.62 0.16 253);
+  --chart-2: oklch(0.70 0.13 150);
+  --chart-3: oklch(0.76 0.14 82);
+  --chart-4: oklch(0.63 0.12 285);
+  --chart-5: oklch(0.65 0.13 28);
+  --sidebar: oklch(0.13 0.003 285);
+  --sidebar-foreground: oklch(0.96 0.004 285);
+  --sidebar-primary: oklch(0.58 0.18 253);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.25 0.005 285);
   --sidebar-accent-foreground: oklch(0.90 0.005 285);
@@ -147,6 +144,7 @@
     max-width: 100vw;
     margin: 0;
     padding: 0;
+    color-scheme: dark;
   }
   
   /* Dark theme - all text inherits foreground color */
@@ -160,12 +158,62 @@
   /* Ensure cards have proper text color for dark theme */
   [data-slot="card"] {
     color: var(--card-foreground);
+    border-radius: var(--radius);
+    border-color: color-mix(in oklch, var(--border) 82%, white 8%);
+    background: color-mix(in oklch, var(--card) 92%, black 8%);
+    box-shadow: none;
   }
   [data-slot="card-title"] {
     color: var(--card-foreground);
   }
   [data-slot="card-description"] {
     color: var(--muted-foreground);
+  }
+}
+
+@layer components {
+  .apple-matte-surface {
+    border: 1px solid color-mix(in oklch, var(--border) 88%, white 8%);
+    border-radius: var(--radius);
+    background: color-mix(in oklch, var(--card) 94%, black 6%);
+    box-shadow: none;
+  }
+
+  .apple-matte-control {
+    border: 1px solid color-mix(in oklch, var(--border) 88%, white 8%);
+    border-radius: var(--radius);
+    background: color-mix(in oklch, var(--muted) 88%, black 12%);
+    box-shadow: none;
+  }
+
+  .luxury-claim-button {
+    border: 1px solid rgba(212, 175, 55, 0.7);
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, #c8902e 0%, #e8b84b 35%, #f5cc5a 55%, #d4a030 100%);
+    color: #1a1200;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    box-shadow:
+      0 0 24px rgba(212, 175, 55, 0.35),
+      0 0 8px rgba(245, 200, 80, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.30),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+    transition: box-shadow 0.2s ease, transform 0.1s ease;
+  }
+  .luxury-claim-button:hover:not(:disabled) {
+    box-shadow:
+      0 0 36px rgba(212, 175, 55, 0.55),
+      0 0 16px rgba(245, 200, 80, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.30);
+    transform: translateY(-1px);
+  }
+  .luxury-claim-button:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.3);
+  }
+  .luxury-claim-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 }
 
@@ -203,10 +251,6 @@ button[class*="v0"],
 div[class*="v0-branding"],
 svg[class*="v0"],
 a:has(svg):is([class*="v0"], [class*="Built"]) {
-  display: none !important;
-}
-
-div:has(> *:contains("Built with")) {
   display: none !important;
 }
 

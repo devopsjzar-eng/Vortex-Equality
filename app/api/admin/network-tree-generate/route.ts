@@ -1,24 +1,12 @@
 import { NextResponse } from 'next/server'
 import { generateAndSaveNetworkTree } from '@/lib/network-tree-generator'
-
-/**
- * Admin endpoint to trigger network tree generation
- * Can be called manually or automatically on network changes
- */
+import { requireAdmin } from '@/lib/require-admin'
 
 export async function POST(request: Request) {
-  try {
-    // Optional: Verify admin token
-    const authHeader = request.headers.get('authorization')
-    const adminToken = process.env.ADMIN_TRIGGER_TOKEN
-    
-    if (adminToken && authHeader !== `Bearer ${adminToken}`) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+  const { errorResponse } = await requireAdmin()
+  if (errorResponse) return errorResponse
 
+  try {
     const success = await generateAndSaveNetworkTree()
 
     if (success) {
@@ -49,9 +37,12 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
+  const { errorResponse } = await requireAdmin()
+  if (errorResponse) return errorResponse
+
   return NextResponse.json({
     message: 'Network tree generation endpoint',
-    usage: 'POST with optional Bearer token',
+    usage: 'POST to trigger generation',
     files_location: '/public/network-records/'
   })
 }

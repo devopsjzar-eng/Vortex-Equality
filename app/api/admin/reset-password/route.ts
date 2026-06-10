@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/require-admin'
 
 function getSupabaseAdmin() { return createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -8,6 +9,9 @@ function getSupabaseAdmin() { return createClient(
 ) }
 
 export async function POST(request: Request) {
+  const { errorResponse } = await requireAdmin()
+  if (errorResponse) return errorResponse
+
   try {
     const { email, newPassword } = await request.json()
 

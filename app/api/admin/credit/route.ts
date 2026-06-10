@@ -1,7 +1,11 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/require-admin'
 
 export async function GET(request: Request) {
+  const { errorResponse } = await requireAdmin()
+  if (errorResponse) return errorResponse
+
   const supabaseAdmin = getSupabaseAdmin()
   const { searchParams } = new URL(request.url)
   const search = searchParams.get('search')
@@ -31,6 +35,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const { errorResponse } = await requireAdmin()
+  if (errorResponse) return errorResponse
+
   try {
     const supabaseAdmin = getSupabaseAdmin()
     const { userId, walletType, amount, reason, transferType = 'direct' } = await request.json()

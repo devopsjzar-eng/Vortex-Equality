@@ -9,9 +9,18 @@ import { Input } from '@/components/ui/input'
 import { Users, Copy, CheckCircle, Gift, Zap, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+type ReferralTreeRow = {
+  user_id: string
+  sponsor_id: string | null
+  level: number
+  active_deposit: number
+  is_maxed_out: boolean
+}
+
 export default function ReferralsPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [referrals, setReferrals] = useState<(Referral & { invitee: Profile })[]>([])
+  const [tree, setTree] = useState<ReferralTreeRow[]>([])
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
   const supabase = createClient()
@@ -39,6 +48,12 @@ export default function ReferralsPage() {
     
     if (referralData) setReferrals(referralData as (Referral & { invitee: Profile })[])
 
+    const treeResponse = await fetch('/api/referral-tree', { credentials: 'include' })
+    const treeResult = await treeResponse.json().catch(() => null)
+    if (treeResponse.ok && treeResult?.success) {
+      setTree(treeResult.tree || [])
+    }
+
     setLoading(false)
   }, [supabase])
 
@@ -64,6 +79,7 @@ export default function ReferralsPage() {
 
   const qualifyingReferrals = referrals.filter(r => r.qualifies_for_booster).length
   const pendingBoosters = referrals.filter(r => r.qualifies_for_booster && !r.booster_applied).length
+  const activeTreeMembers = tree.filter(member => Number(member.active_deposit || 0) > 0).length
 
   if (loading) {
     return (
@@ -88,8 +104,8 @@ export default function ReferralsPage() {
               <Users className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{profile?.total_direct_referrals || 0}</p>
-              <p className="text-sm text-muted-foreground">Total Referrals</p>
+              <p className="text-2xl font-bold">{tree.length || profile?.total_direct_referrals || 0}</p>
+              <p className="text-sm text-muted-foreground">Total Network</p>
             </div>
           </CardContent>
         </Card>
@@ -99,8 +115,8 @@ export default function ReferralsPage() {
               <Zap className="h-6 w-6 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{qualifyingReferrals}</p>
-              <p className="text-sm text-muted-foreground">Qualifying Boosters</p>
+              <p className="text-2xl font-bold">{activeTreeMembers}</p>
+              <p className="text-sm text-muted-foreground">Active Downlines</p>
             </div>
           </CardContent>
         </Card>
@@ -176,6 +192,51 @@ export default function ReferralsPage() {
               <p className="text-sm text-muted-foreground">Permanent daily booster (max 3.0%)</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Referral List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Genealogy Tree</CardTitle>
+          <CardDescription>
+            Downline structure with active deposit status from the staging financial engine
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {tree.length === 0 ? (
+            <p className="py-8 text-center text-muted-foreground">
+              No genealogy records yet.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {tree.map((member) => (
+                <div
+                  key={`${member.user_id}-${member.level}`}
+                  className="flex items-center justify-between rounded-lg border border-border p-4"
+                  style={{ marginLeft: `${Math.min(member.level - 1, 4) * 16}px` }}
+                >
+                  <div>
+                    <p className="font-medium">Level {member.level}</p>
+                    <p className="font-mono text-xs text-muted-foreground">{member.user_id}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">{formatCurrency(Number(member.active_deposit || 0))}</p>
+                    <span className={cn(
+                      'inline-flex rounded-full px-2 py-1 text-xs font-medium',
+                      member.is_maxed_out
+                        ? 'bg-destructive/10 text-destructive'
+                        : Number(member.active_deposit || 0) > 0
+                          ? 'bg-success/10 text-success'
+                          : 'bg-muted text-muted-foreground'
+                    )}>
+                      {member.is_maxed_out ? 'Maxed Out' : Number(member.active_deposit || 0) > 0 ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

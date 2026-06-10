@@ -48,7 +48,7 @@ interface Profile {
 }
 
 interface ProfitClaim {
-  id: string
+  id: string | null
   amount: number
   total_percentage: number
   status: string
@@ -65,11 +65,28 @@ interface Transaction {
   receipt_data?: any
 }
 
+interface FinancialWallet {
+  main_balance: number
+  active_deposit: number
+  network_bonus_balance: number
+  unclaimed_profit: number
+  total_claimed_profit: number
+  total_withdrawn: number
+  is_bep_reached: boolean
+  is_maxed_out: boolean
+}
+
 export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [assetBalance, setAssetBalance] = useState(0)
   const [bonusBalance, setBonusBalance] = useState(0)
+  const [activeDeposit, setActiveDeposit] = useState(0)
+  const [unclaimedProfit, setUnclaimedProfit] = useState(0)
+  const [totalClaimedProfit, setTotalClaimedProfit] = useState(0)
+  const [totalWithdrawn, setTotalWithdrawn] = useState(0)
+  const [isBepReached, setIsBepReached] = useState(false)
+  const [isMaxedOut, setIsMaxedOut] = useState(false)
   const [todayProfit, setTodayProfit] = useState<ProfitClaim | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -91,7 +108,7 @@ export default function DashboardPage() {
       const testTimeParam = urlParams.get('testTime')
       if (testTimeParam) {
         const [hours, minutes] = testTimeParam.split(':').map(Number)
-        console.log('[v0] TEST MODE: Using override time:', testTimeParam)
+        console.log('[Vortex] TEST MODE: Using override time:', testTimeParam)
         getTestTime = () => {
           const d = new Date()
           d.setHours(hours, minutes, 0, 0)
@@ -104,7 +121,7 @@ export default function DashboardPage() {
     const now = getTestTime()
     const jakartaNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }))
     const initialProfitTime = jakartaNow.getHours() >= 10
-    console.log('[v0] Initial profit time check:', jakartaNow.getHours(), '>=', 10, '=', initialProfitTime)
+    console.log('[Vortex] Initial profit time check:', jakartaNow.getHours(), '>=', 10, '=', initialProfitTime)
     setIsProfitTimeState(initialProfitTime)
     
     const timer = setInterval(() => {
@@ -134,19 +151,22 @@ export default function DashboardPage() {
       
       setUserId(user.id)
 
-      // Run 3 parallel queries instead of sequential
-      const [profileRes, walletsRes, transactionsRes] = await Promise.all([
+      let currentUnclaimedProfit = 0
+
+      // Run financial reads in parallel. Legacy profile is still used for name/rank/referral code.
+      const [profileRes, financialWalletRes, ledgerRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single(),
         supabase
-          .from('wallets')
+          .from('financial_wallets')
           .select('*')
-          .eq('user_id', user.id),
+          .eq('user_id', user.id)
+          .maybeSingle(),
         supabase
-          .from('transactions')
+          .from('ledger_entries')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
@@ -154,11 +174,29 @@ export default function DashboardPage() {
       ])
       
       if (profileRes.data) setProfile(profileRes.data)
-      if (walletsRes.data) {
-        setAssetBalance(walletsRes.data.find(w => w.wallet_type === 'asset')?.balance || 0)
-        setBonusBalance(walletsRes.data.find(w => w.wallet_type === 'bonus')?.balance || 0)
+      if (financialWalletRes.data) {
+        const wallet = financialWalletRes.data as FinancialWallet
+        setAssetBalance(Number(wallet.main_balance || 0))
+        setBonusBalance(Number(wallet.network_bonus_balance || 0))
+        setActiveDeposit(Number(wallet.active_deposit || 0))
+        currentUnclaimedProfit = Number(wallet.unclaimed_profit || 0)
+        setUnclaimedProfit(currentUnclaimedProfit)
+        setTotalClaimedProfit(Number(wallet.total_claimed_profit || 0))
+        setTotalWithdrawn(Number(wallet.total_withdrawn || 0))
+        setIsBepReached(Boolean(wallet.is_bep_reached))
+        setIsMaxedOut(Boolean(wallet.is_maxed_out))
       }
-      if (transactionsRes.data) setTransactions(transactionsRes.data)
+      if (ledgerRes.data) {
+        setTransactions(ledgerRes.data.map((entry: any) => ({
+          id: entry.id,
+          type: entry.entry_type,
+          amount: Math.abs(Number(entry.amount || 0)),
+          status: 'completed',
+          created_at: entry.created_at,
+          wallet_type: 'main',
+          receipt_data: entry.metadata,
+        })))
+      }
 
       // Fetch profit data - simplified
       // Get today's date in WIB
@@ -194,9 +232,9 @@ export default function DashboardPage() {
           created_at: ''
         })
       } else {
-        setTodayProfit({ 
-          status: 'available', 
-          amount: 0, 
+        setTodayProfit({
+          status: currentUnclaimedProfit > 0 ? 'available' : 'unavailable',
+          amount: currentUnclaimedProfit,
           total_percentage: 0,
           id: null,
           created_at: ''
@@ -204,7 +242,7 @@ export default function DashboardPage() {
       }
 
     } catch (error) {
-      console.error('[v0] Dashboard fetch error:', error)
+      console.error('[Vortex] Dashboard fetch error:', error)
     } finally {
       setLoading(false)
     }
@@ -215,33 +253,31 @@ export default function DashboardPage() {
   }, [fetchData])
 
   const handleClaimProfit = async () => {
-    // PENTING: Cek dulu apakah sudah claimed atau sedang claiming
     if (claiming) {
-      toast.info('Sedang memproses claim...')
+      toast.info('Claim is already processing...')
       return
     }
     
     if (todayProfit?.status === 'claimed') {
-      toast.info('Anda sudah claim profit hari ini.')
+      toast.info('You already claimed profit today.')
       return
     }
     
     if (!userId) {
-      toast.error('User tidak ditemukan. Silakan login ulang.')
+      toast.error('User not found. Please log in again.')
       return
     }
     
     setClaiming(true)
 
     try {
-      // DARURAT: Use quick-claim API
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
       
-      const res = await fetch('/api/profit/quick-claim', {
+      const res = await fetch('/api/profit/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userId }),
+        body: JSON.stringify({ claimDate: new Date().toISOString().slice(0, 10) }),
         credentials: 'include',
         signal: controller.signal
       })
@@ -251,8 +287,8 @@ export default function DashboardPage() {
       // Check if response is JSON
       const contentType = res.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
-        console.error('[v0] API returned non-JSON response:', await res.text())
-        toast.error('Server error. Silakan refresh halaman dan coba lagi.')
+        console.error('[Vortex] API returned non-JSON response:', await res.text())
+        toast.error('Server error. Please refresh the page and try again.')
         setClaiming(false)
         return
       }
@@ -260,22 +296,21 @@ export default function DashboardPage() {
       const data = await res.json()
       
       if (!res.ok || !data.success) {
-        toast.error(data.error || 'Gagal klaim profit. Silakan coba lagi.')
+        toast.error(data.error || 'Failed to claim profit. Please try again.')
         setClaiming(false)
         return
       }
+
+      const claimedAmount = Number(data.wallet?.main_balance || 0) - assetBalance
+      const displayedAmount = claimedAmount > 0 ? claimedAmount : todayProfit?.amount || unclaimedProfit
       
-      // SUCCESS! Show celebration toast
-      toast.success(`Profit $${data.amount.toFixed(2)} berhasil diklaim!`, {
-        description: 'Dana sudah ditambahkan ke Asset Wallet',
+      toast.success(`Profit ${formatCurrency(displayedAmount)} claimed successfully!`, {
+        description: 'Funds were moved to your Main Wallet.',
         duration: 5000
       })
       
-      // PENTING: Set claimed SEGERA dan TIDAK set claiming ke false
-      // Ini mencegah tombol muncul lagi
-      setTodayProfit({ status: 'claimed', amount: data.amount, total_percentage: data.rate, id: data.receipt_number })
+      setTodayProfit({ status: 'claimed', amount: displayedAmount, total_percentage: todayProfit?.total_percentage || 0, id: data.wallet?.user_id })
       
-      // Refresh data dari server
       fetchData()
       
       const now = new Date()
@@ -284,32 +319,32 @@ export default function DashboardPage() {
       
       setReceiptData({
         type: 'DAILY PROFIT',
-        amount: data.amount,
-        rate: data.rate.toFixed(2) + '%',
-        wallet: 'Asset Wallet',
+        amount: displayedAmount,
+        rate: `${todayProfit?.total_percentage || todayRate}%`,
+        wallet: 'Main Wallet',
         date: `${dateStr}, ${timeStr}`,
         status: 'SUCCESS',
-        receipt_number: data.receipt_number || 'VX-DP-' + Date.now().toString(36).toUpperCase(),
-        note: 'Auto-compound to Asset Wallet'
+        receipt_number: 'VX-DP-' + Date.now().toString(36).toUpperCase(),
+        note: 'Claimed from Unclaimed Profit'
       })
       setShowReceipt(true)
       
     } catch (error) {
-      console.error('[v0] Claim error:', error)
-      toast.error('Terjadi kesalahan jaringan. Silakan coba lagi.')
+      console.error('[Vortex] Claim error:', error)
+      toast.error('Network error. Please try again.')
     } finally {
       setClaiming(false)
     }
   }
 
-  // Calculate ROI percentage (profit / deposit * 100)
-  const roiPercentage = profile && profile.total_deposit > 0 
-    ? ((assetBalance - profile.total_deposit) / profile.total_deposit) * 100 
+  // Calculate ROI percentage from claimed profit against the active deposit.
+  const roiPercentage = activeDeposit > 0
+    ? (totalClaimedProfit / activeDeposit) * 100
     : 0
   const roiProgress = Math.min(Math.max(roiPercentage / 4, 0), 100) // Progress to 400%
-  const isMaxROI = roiPercentage >= 400
+  const isMaxROI = isMaxedOut || roiPercentage >= 400
 
-  // Use isProfitTimeState from useEffect (stable, tidak berkedip)
+  // Use isProfitTimeState from useEffect to avoid frequent visual changes.
   const isProfitTime = isProfitTimeState
   
   // Calculate time for display only
@@ -372,21 +407,23 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-4 min-w-0">
           {/* Combined Wallet Display */}
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-        {/* Asset Wallet - Premium Glass Design */}
-        <Card className="relative overflow-hidden border border-white/[0.08] bg-[#0d1117]/80 shadow-2xl backdrop-blur-xl min-w-0">
-          {/* Subtle glow effect */}
-          <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-blue-500/10 blur-[80px]" />
-          <div className="absolute -left-20 -bottom-20 h-32 w-32 rounded-full bg-blue-400/5 blur-[60px]" />
-          
+        {/* Main Wallet */}
+        <Card className="relative overflow-hidden border border-amber-500/20 bg-[#0d1117]/80 shadow-2xl backdrop-blur-xl min-w-0" style={{boxShadow: '0 0 40px rgba(212,175,55,0.08), 0 8px 32px rgba(0,0,0,0.5)'}}>
+          {/* Gold glow effect */}
+          <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-amber-500/10 blur-[80px]" />
+          <div className="absolute -left-20 -bottom-20 h-32 w-32 rounded-full bg-yellow-400/5 blur-[60px]" />
+          {/* Top gold shimmer line */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
+
           <CardHeader className="relative px-5 pt-5 pb-2">
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 ring-1 ring-white/10">
-                  <Wallet className="h-5 w-5 text-blue-400" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-yellow-600/10 ring-1 ring-amber-500/20">
+                  <Wallet className="h-5 w-5 text-amber-400" />
                 </div>
-                <span className="text-sm font-medium text-slate-300">Asset Wallet</span>
+              <span className="text-sm font-medium text-slate-300">Main Wallet</span>
               </div>
-              <span className="rounded-full bg-blue-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-400 ring-1 ring-blue-500/20">
+              <span className="rounded-full bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/20">
                 Auto-Compound
               </span>
             </CardTitle>
@@ -399,7 +436,7 @@ export default function DashboardPage() {
                 {formatCurrency(assetBalance)}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Initial Deposit: {formatCurrency(profile?.total_deposit || 0)}
+                Active Deposit: {formatCurrency(activeDeposit)}
               </p>
             </div>
 
@@ -409,7 +446,7 @@ export default function DashboardPage() {
                 <span className="text-slate-500">ROI Progress</span>
                 <span className={cn(
                   "font-semibold",
-                  isMaxROI ? 'text-red-400' : roiPercentage >= 100 ? 'text-emerald-400' : 'text-slate-300'
+                  isMaxROI ? 'text-red-400' : isBepReached ? 'text-emerald-400' : 'text-amber-400'
                 )}>
                   {roiPercentage.toFixed(1)}% / 400%
                 </span>
@@ -418,11 +455,11 @@ export default function DashboardPage() {
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-700",
-                    isMaxROI 
-                      ? 'bg-gradient-to-r from-red-500 to-red-400' 
-                      : roiPercentage >= 100 
+                    isMaxROI
+                      ? 'bg-gradient-to-r from-red-500 to-red-400'
+                      : isBepReached
                         ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                        : 'bg-gradient-to-r from-blue-500 to-blue-400'
+                        : 'bg-gradient-to-r from-amber-500 to-yellow-400'
                   )}
                   style={{ width: `${roiProgress}%` }}
                 />
@@ -434,7 +471,7 @@ export default function DashboardPage() {
                   Max ROI reached. Re-invest to continue earning.
                 </p>
               )}
-              {!isMaxROI && roiPercentage >= 100 && (
+              {!isMaxROI && isBepReached && (
                 <p className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-400">
                   <CheckCircle2 className="h-3 w-3" />
                   Withdrawal fee reduced to 5%
@@ -447,15 +484,19 @@ export default function DashboardPage() {
               <span className="text-xs text-slate-500">Withdrawal Fee</span>
               <span className={cn(
                 "text-sm font-semibold",
-                roiPercentage >= 100 ? 'text-emerald-400' : 'text-slate-300'
+                isBepReached ? 'text-emerald-400' : 'text-slate-300'
               )}>
-                {roiPercentage >= 100 ? '5%' : '20%'}
+                {isBepReached ? '5%' : '20%'}
               </span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-white/[0.03] px-4 py-2.5 ring-1 ring-white/[0.06]">
+              <span className="text-xs text-slate-500">Total Withdrawn</span>
+              <span className="text-sm font-semibold text-slate-300">{formatCurrency(totalWithdrawn)}</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Bonus Wallet - Premium Glass Design */}
+        {/* Network Bonus Wallet */}
         <Card className="relative overflow-hidden border border-white/[0.08] bg-[#0d1117]/80 shadow-2xl backdrop-blur-xl min-w-0">
           {/* Subtle glow effect */}
           <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-emerald-500/10 blur-[80px]" />
@@ -467,7 +508,7 @@ export default function DashboardPage() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-600/10 ring-1 ring-white/10">
                   <Gift className="h-5 w-5 text-emerald-400" />
                 </div>
-                <span className="text-sm font-medium text-slate-300">Bonus Wallet</span>
+                <span className="text-sm font-medium text-slate-300">Network Bonus Wallet</span>
               </div>
               <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400 ring-1 ring-emerald-500/20">
                 No Cap
@@ -514,26 +555,27 @@ export default function DashboardPage() {
 
       {/* Daily Profit Claim Card */}
       <Card className={`relative overflow-hidden border-2 mt-4 ${
-        todayProfit?.status === 'available' 
-          ? 'border-blue-500/50 bg-gradient-to-r from-blue-500/10 via-blue-500/10 to-blue-500/5' 
+        todayProfit?.status === 'available'
+          ? 'border-amber-500/50 bg-gradient-to-r from-amber-500/10 via-yellow-500/8 to-amber-500/5'
           : todayProfit?.status === 'claimed'
-          ? 'border-blue-500/30 bg-blue-500/5'
+          ? 'border-amber-500/20 bg-amber-500/5'
           : 'border-muted bg-muted/20'
       }`}>
         {todayProfit?.status === 'available' && (
           <>
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-transparent animate-pulse" />
-            <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-blue-500/20 blur-2xl" />
+            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-transparent animate-pulse" />
+            <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-amber-500/20 blur-2xl" />
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
           </>
         )}
         <CardContent className="relative p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
               <div className={`rounded-2xl p-4 ${
-                todayProfit?.status === 'available' 
-                  ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30' 
+                todayProfit?.status === 'available'
+                  ? 'bg-gradient-to-br from-amber-400 to-yellow-600 text-black shadow-lg shadow-amber-500/40'
                   : todayProfit?.status === 'claimed'
-                  ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
+                  ? 'bg-gradient-to-br from-amber-400 to-yellow-600 text-black'
                   : 'bg-muted text-muted-foreground'
               }`}>
                 {todayProfit?.status === 'claimed' ? (
@@ -546,7 +588,7 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-bold">Daily Profit</h3>
                 {todayProfit?.status === 'available' ? (
                   <>
-                    <p className="text-3xl font-bold text-blue-500">
+                    <p className="text-3xl font-bold text-amber-400">
                       +{todayRate}%
                     </p>
                     <p className="text-sm text-muted-foreground">
@@ -555,9 +597,9 @@ export default function DashboardPage() {
                   </>
                 ) : todayProfit?.status === 'claimed' ? (
                   <>
-                    <p className="text-xl font-semibold text-blue-500">Claimed Today!</p>
+                    <p className="text-xl font-semibold text-amber-400">Claimed Today!</p>
                     <p className="text-sm text-muted-foreground">
-                      +{formatCurrency(todayProfit.amount)} ({todayProfit.total_percentage.toFixed(1)}%) added to Asset Wallet
+                      +{formatCurrency(todayProfit.amount)} ({todayProfit.total_percentage.toFixed(1)}%) added to Main Wallet
                     </p>
                   </>
                 ) : !isProfitTime ? (
@@ -567,7 +609,7 @@ export default function DashboardPage() {
                       <CountdownTimer type="until-available" targetHour={10} />
                     </div>
                   </>
-                ) : profile && profile.total_deposit === 0 ? (
+                ) : activeDeposit === 0 ? (
                   <>
                     <p className="text-lg font-semibold text-muted-foreground">No Profit Today</p>
                     <p className="text-sm text-muted-foreground">
@@ -587,11 +629,11 @@ export default function DashboardPage() {
 
             <div className="flex flex-col items-stretch gap-2 md:items-end">
               {/* MANUAL CLAIM BUTTON - Always show if profit time and has deposit and not claimed */}
-              {isProfitTime && profile && profile.total_deposit > 0 && todayProfit?.status !== 'claimed' && (
+              {isProfitTime && activeDeposit > 0 && todayProfit?.status !== 'claimed' && (
                 <>
                   <Button 
                     size="lg" 
-                    className="bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 hover:from-green-600 hover:via-emerald-600 hover:to-green-700 active:from-green-700 active:via-emerald-700 active:to-green-800 text-white font-bold text-lg px-10 py-6 h-auto rounded-xl shadow-[0_8px_30px_rgba(34,197,94,0.5)] hover:shadow-[0_8px_40px_rgba(34,197,94,0.6)] active:shadow-[0_2px_10px_rgba(34,197,94,0.4)] active:scale-[0.92] active:translate-y-1 transition-all duration-100 ease-out transform select-none"
+                    className="luxury-claim-button h-auto px-8 py-5 text-base font-semibold sm:text-lg"
                     onClick={handleClaimProfit}
                     disabled={claiming}
                   >
@@ -607,7 +649,7 @@ export default function DashboardPage() {
                       </span>
                     )}
                   </Button>
-                  <p className="flex items-center justify-center gap-1 text-xs text-green-500 md:justify-end">
+                  <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground md:justify-end">
                     <CompactCountdown type="until-expires" targetHour={24} />
                     <span>left to claim</span>
                   </p>
@@ -617,7 +659,7 @@ export default function DashboardPage() {
                 <Button 
                   variant="outline" 
                   size="lg"
-                  className="border-2 border-blue-500 text-blue-500 font-semibold px-8 py-5 rounded-xl hover:bg-blue-500 hover:text-white active:scale-[0.92] active:translate-y-1 active:bg-blue-600 transition-all duration-100 ease-out transform select-none touch-manipulation shadow-lg hover:shadow-blue-500/30"
+                  className="rounded-lg border-primary px-8 py-5 font-semibold text-primary hover:bg-primary hover:text-primary-foreground"
                   style={{ WebkitTapHighlightColor: 'transparent' }}
                   onClick={() => {
                   const now = new Date()
@@ -627,11 +669,11 @@ export default function DashboardPage() {
                     type: 'DAILY PROFIT',
                     amount: todayProfit.amount,
                     rate: todayProfit.total_percentage.toFixed(1) + '%',
-                    wallet: 'Asset Wallet',
+                    wallet: 'Main Wallet',
                     date: `${dateStr}, ${timeStr}`,
                     status: 'SUCCESS',
                     receipt_number: typeof todayProfit.id === 'string' ? 'VX-DP-' + todayProfit.id.slice(0, 8).toUpperCase() : 'VX-DP-' + Date.now().toString(36).toUpperCase(),
-                    note: 'Daily profit added to Asset Wallet'
+                    note: 'Daily profit added to Main Wallet'
                   })
                   setShowReceipt(true)
                 }}>
@@ -831,3 +873,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
-    console.log('[v0] TEST WEBHOOK - Body received:', body)
+    console.log('[Vortex] TEST WEBHOOK - Body received:', body)
 
     // Test case: Simulate finished payment from Now Payments
     const paymentId = body.payment_id || 'test-payment-123'
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       .eq('external_ref', externalId)
       .single()
 
-    console.log('[v0] TEST - Found transaction:', transaction)
+    console.log('[Vortex] TEST - Found transaction:', transaction)
 
     if (!transaction) {
       return NextResponse.json(
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', transaction.id)
 
-    console.log('[v0] TEST - Update status result:', updateError)
+    console.log('[Vortex] TEST - Update status result:', updateError)
 
     // GET WALLET AND CREDIT BALANCE
     const { data: wallet } = await supabaseAdmin
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       .eq('wallet_type', 'asset')
       .single()
 
-    console.log('[v0] TEST - Wallet before credit:', wallet)
+    console.log('[Vortex] TEST - Wallet before credit:', wallet)
 
     if (wallet) {
       const newBalance = (wallet.balance || 0) + transaction.amount
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', wallet.id)
 
-      console.log('[v0] TEST - Wallet update result:', walletError)
+      console.log('[Vortex] TEST - Wallet update result:', walletError)
     }
 
     // GET PROFILE AND UPDATE TOTAL_DEPOSIT
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       .eq('id', transaction.user_id)
       .single()
 
-    console.log('[v0] TEST - Profile:', profile)
+    console.log('[Vortex] TEST - Profile:', profile)
 
     if (profile) {
       const newTotalDeposit = (profile.total_deposit || 0) + transaction.amount
@@ -98,11 +98,11 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', transaction.user_id)
 
-      console.log('[v0] TEST - Profile update result:', profileError)
+      console.log('[Vortex] TEST - Profile update result:', profileError)
 
       // NOW TRIGGER BONUS SPONSOR - Level 1, 2, 3
       if (profile.referred_by) {
-        console.log('[v0] TEST - Processing sponsor bonus...')
+        console.log('[Vortex] TEST - Processing sponsor bonus...')
 
         // LEVEL 1 BONUS (8%)
         const level1Bonus = transaction.amount * 0.08
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
               .eq('id', bonusWallet.id)
           }
 
-          console.log('[v0] TEST - Level 1 bonus ($' + level1Bonus.toFixed(2) + ') credited to:', level1Sponsor.id)
+          console.log('[Vortex] TEST - Level 1 bonus ($' + level1Bonus.toFixed(2) + ') credited to:', level1Sponsor.id)
         }
 
         // LEVEL 2 BONUS (5%)
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
                   .eq('id', bonusWallet2.id)
               }
 
-              console.log('[v0] TEST - Level 2 bonus ($' + level2Bonus.toFixed(2) + ') credited')
+              console.log('[Vortex] TEST - Level 2 bonus ($' + level2Bonus.toFixed(2) + ') credited')
             }
           }
         }
@@ -213,10 +213,11 @@ export async function POST(request: NextRequest) {
       bonus_triggered: profile?.referred_by ? true : false,
     })
   } catch (error) {
-    console.error('[v0] TEST WEBHOOK ERROR:', error)
+    console.error('[Vortex] TEST WEBHOOK ERROR:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
 }
+

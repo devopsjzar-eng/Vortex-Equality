@@ -197,7 +197,7 @@ export function MarketInsightCard({ profitRate, className }: MarketInsightProps)
           <div className="flex items-center justify-center gap-1.5">
             <Zap className="h-3 w-3 text-blue-400" />
             <p className="text-[10px] text-slate-500">
-              Powered by <span className="text-blue-400 font-medium">Vortex AI Trading System</span>
+              Vortex AI Trading System
             </p>
           </div>
         </div>

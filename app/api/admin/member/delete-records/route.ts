@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/require-admin'
 
 function getSupabaseAdmin() {
   return createClient(
@@ -16,6 +17,9 @@ function formatCurrency(amount: number) {
 }
 
 export async function POST(request: Request) {
+  const { errorResponse } = await requireAdmin()
+  if (errorResponse) return errorResponse
+
   try {
     const supabaseAdmin = getSupabaseAdmin()
     const { userId, recordType, amountToRemove, adminNotes } = await request.json()
@@ -329,6 +333,9 @@ export async function POST(request: Request) {
 
 // GET endpoint to preview what will be deleted
 export async function GET(request: Request) {
+  const { errorResponse } = await requireAdmin()
+  if (errorResponse) return errorResponse
+
   try {
     const supabaseAdmin = getSupabaseAdmin()
     const { searchParams } = new URL(request.url)

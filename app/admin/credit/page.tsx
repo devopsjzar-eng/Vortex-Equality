@@ -139,7 +139,7 @@ export default function DirectCreditPage() {
         transferType = 'direct'
       }
 
-      console.log('[v0] Sending credit:', { selectedMember, walletType, transferType, creditAmount })
+      console.log('[Vortex] Sending credit:', { selectedMember, walletType, transferType, creditAmount })
 
       const response = await fetch('/api/admin/credit', {
         method: 'POST',
@@ -154,7 +154,7 @@ export default function DirectCreditPage() {
       })
 
       const data = await response.json()
-      console.log('[v0] API response:', data)
+      console.log('[Vortex] API response:', data)
 
       if (!response.ok) {
         setError(data.error || 'Gagal mengirim credit')
@@ -170,7 +170,7 @@ export default function DirectCreditPage() {
       setTimeout(() => setSuccess(false), 3000)
       fetchHistory()
     } catch (err: any) {
-      console.log('[v0] Error:', err.message)
+      console.log('[Vortex] Error:', err.message)
       setError(err.message || 'Error mengirim credit')
     } finally {
       setSubmitting(false)
@@ -259,7 +259,7 @@ export default function DirectCreditPage() {
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="__placeholder__" disabled>
                       {search ? 'Tidak ada member yang cocok' : 'Mulai cari member'}
                     </SelectItem>
                   )}
@@ -448,3 +448,4 @@ export default function DirectCreditPage() {
     </div>
   )
 }
+

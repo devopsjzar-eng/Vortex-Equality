@@ -37,23 +37,50 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user: any = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {
+    // Edge Runtime network failure — allow request through without auth check
+    return supabaseResponse
+  }
 
-  // Protected routes - redirect to login if not authenticated
-  if (
-    (request.nextUrl.pathname.startsWith('/dashboard') ||
-      request.nextUrl.pathname.startsWith('/vx-ctrl-9f2a')) &&
-    !user
-  ) {
+  const pathname = request.nextUrl.pathname
+  const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/vx-ctrl-9f2a')
+  const isDashboardRoute = pathname.startsWith('/dashboard')
+
+  // Unauthenticated users cannot access dashboard or admin pages
+  if ((isDashboardRoute || isAdminRoute) && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     return NextResponse.redirect(url)
   }
 
+  // For admin pages: verify is_admin flag from profiles table
+  if (isAdminRoute && user) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single()
+
+      if (!profile?.is_admin) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+      }
+    } catch {
+      // Network failure on profile check — block access to be safe
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
+  }
+
   // Redirect authenticated users away from auth pages
-  if (request.nextUrl.pathname.startsWith('/auth') && user) {
+  if (pathname.startsWith('/auth') && user) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)

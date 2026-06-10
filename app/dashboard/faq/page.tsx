@@ -114,15 +114,15 @@ const faqCategories = [
     faqs: [
       {
         q: 'What are the leadership ranks?',
-        a: 'There are 5 ranks: P1 SPARK ($100), P2 FLAME ($300), P3 BLAZE ($500), P4 INFERNO ($3,000), P5 VORTEX ($5,000). Each rank provides a one-time salary reward.'
+        a: 'There are 5 ranks: P1 SPARK ($100/month), P2 RANK ($300/month), P3 RANK ($500/month), P4 RANK ($3,000/month), and P5 ELITE ($5,000/month). Salary is recurring when requirements remain met.'
       },
       {
         q: 'How do I qualify for ranks?',
-        a: 'Each rank requires: minimum direct referrals, minimum group omset, minimum personal asset, and qualifying branches (legs with specific omset). See the Rewards page for detailed requirements.'
+        a: 'Each rank requires minimum direct referrals, group volume, personal Active Asset, and qualifying legs where required. See the Rewards page for detailed requirements.'
       },
       {
         q: 'When do I receive rank rewards?',
-        a: 'Rank rewards are credited to your Bonus Wallet automatically once all requirements are verified. Rewards can be withdrawn following standard Bonus Wallet rules (5% fee).'
+        a: 'Rank salary is claim-based. After a claim, the button locks for 30 days unless you rank up sooner. Claimed salary is credited to the Bonus Wallet and follows the standard 5% Bonus Wallet withdrawal fee.'
       },
     ]
   },

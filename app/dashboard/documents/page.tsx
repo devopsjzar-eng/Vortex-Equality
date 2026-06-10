@@ -227,7 +227,7 @@ export default function DocumentsPage() {
                 <Award className="h-5 w-5" />
                 Leadership Rank Rewards
               </CardTitle>
-              <CardDescription>One-time salary rewards for achieving ranks</CardDescription>
+              <CardDescription>Recurring monthly salary for qualified P1-P5 ranks</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -237,7 +237,7 @@ export default function DocumentsPage() {
                       <th className="pb-3 text-slate-400">Rank</th>
                       <th className="pb-3 text-slate-400">Direct Refs</th>
                       <th className="pb-3 text-slate-400">Branches</th>
-                      <th className="pb-3 text-slate-400">Group Omset</th>
+                      <th className="pb-3 text-slate-400">Group Volume</th>
                       <th className="pb-3 text-slate-400">Min Asset</th>
                       <th className="pb-3 text-right text-slate-400">Reward</th>
                     </tr>
@@ -252,7 +252,7 @@ export default function DocumentsPage() {
                       <td className="py-3 text-right font-bold text-blue-400">$100</td>
                     </tr>
                     <tr className="border-b border-slate-800">
-                      <td className="py-3 font-medium text-blue-400">P2 FLAME</td>
+                      <td className="py-3 font-medium text-blue-400">P2 RANK</td>
                       <td className="py-3">-</td>
                       <td className="py-3">3 x $5,000</td>
                       <td className="py-3">$15,000</td>
@@ -260,7 +260,7 @@ export default function DocumentsPage() {
                       <td className="py-3 text-right font-bold text-blue-400">$300</td>
                     </tr>
                     <tr className="border-b border-slate-800">
-                      <td className="py-3 font-medium text-red-400">P3 BLAZE</td>
+                      <td className="py-3 font-medium text-red-400">P3 RANK</td>
                       <td className="py-3">-</td>
                       <td className="py-3">3 x $15,000</td>
                       <td className="py-3">$45,000</td>
@@ -268,7 +268,7 @@ export default function DocumentsPage() {
                       <td className="py-3 text-right font-bold text-blue-400">$500</td>
                     </tr>
                     <tr className="border-b border-slate-800">
-                      <td className="py-3 font-medium text-purple-400">P4 INFERNO</td>
+                      <td className="py-3 font-medium text-purple-400">P4 RANK</td>
                       <td className="py-3">-</td>
                       <td className="py-3">3 x $45,000</td>
                       <td className="py-3">$135,000</td>
@@ -276,7 +276,7 @@ export default function DocumentsPage() {
                       <td className="py-3 text-right font-bold text-blue-400">$3,000</td>
                     </tr>
                     <tr>
-                      <td className="py-3 font-medium text-blue-400">P5 VORTEX</td>
+                      <td className="py-3 font-medium text-blue-400">P5 ELITE</td>
                       <td className="py-3">-</td>
                       <td className="py-3">3 x $100,000</td>
                       <td className="py-3">$300,000</td>
@@ -291,8 +291,8 @@ export default function DocumentsPage() {
                 <p className="flex items-start gap-2 text-sm text-slate-300">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
                   <span>
-                    <strong>Important:</strong> You must maintain the minimum Asset Wallet balance to receive rank rewards.
-                    If your balance is below the requirement, the reward will be held until you top up.
+                    <strong>Important:</strong> You must maintain the required Active Asset to claim rank salary.
+                    After claiming, the button locks for 30 days unless you rank up sooner.
                   </span>
                 </p>
               </div>

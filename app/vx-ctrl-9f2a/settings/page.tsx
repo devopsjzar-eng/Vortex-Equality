@@ -7,16 +7,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Settings, AlertTriangle, CheckCircle, Loader2, RefreshCw } from 'lucide-react'
+import { Settings, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react'
+import Link from 'next/link'
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [generatingProfit, setGeneratingProfit] = useState(false)
   const [settings, setSettings] = useState({
     maintenance_mode: false,
-    profit_distribution_time: '10:00',
-    profit_claim_deadline: '23:59',
     withdrawal_fee_under_100: 20,
     withdrawal_fee_over_100: 5,
     bonus_withdrawal_fee: 5,
@@ -26,126 +24,33 @@ export default function SettingsPage() {
   const supabase = createClient()
 
   const fetchSettings = useCallback(async () => {
-    const { data } = await supabase
-      .from('system_settings')
-      .select('*')
-    
+    const { data } = await supabase.from('system_settings').select('*')
     if (data) {
-      const settingsMap: Record<string, string | number | boolean> = {}
+      const map: Record<string, string | number | boolean> = {}
       data.forEach(item => {
         let value = item.value
-        // Parse JSON strings
         if (typeof value === 'string' && (value.startsWith('"') || value === 'true' || value === 'false')) {
-          try {
-            value = JSON.parse(value)
-          } catch {
-            // Keep original value
-          }
+          try { value = JSON.parse(value) } catch { /* keep original */ }
         }
-        settingsMap[item.key] = value
+        map[item.key] = value
       })
-      
-      setSettings(prev => ({
-        ...prev,
-        ...settingsMap,
-      }))
+      setSettings(prev => ({ ...prev, ...map }))
     }
     setLoading(false)
   }, [supabase])
 
-  useEffect(() => {
-    fetchSettings()
-  }, [fetchSettings])
+  useEffect(() => { fetchSettings() }, [fetchSettings])
 
   const updateSetting = async (key: string, value: string | number | boolean) => {
     setSaving(true)
-    
     await supabase
       .from('system_settings')
-      .update({ 
-        value: typeof value === 'string' ? `"${value}"` : value,
-        updated_at: new Date().toISOString()
-      })
+      .update({ value: typeof value === 'string' ? `"${value}"` : value, updated_at: new Date().toISOString() })
       .eq('key', key)
-
     setSettings(prev => ({ ...prev, [key]: value }))
     setSaving(false)
     setSuccess(true)
     setTimeout(() => setSuccess(false), 2000)
-  }
-
-  const generateDailyProfit = async () => {
-    setGeneratingProfit(true)
-    
-    try {
-      // Generate random profit between 1% and 2%
-      const profitPercentage = (Math.random() * (2 - 1) + 1).toFixed(2)
-      const today = new Date().toISOString().split('T')[0]
-      const distributionTime = new Date()
-      distributionTime.setHours(10, 0, 0, 0)
-      const expiryTime = new Date()
-      expiryTime.setHours(23, 59, 59, 999)
-
-      // Create or update today's profit
-      const { error } = await supabase
-        .from('daily_profits')
-        .upsert({
-          profit_date: today,
-          global_profit_percentage: parseFloat(profitPercentage),
-          company_share: 50,
-          member_share: 50,
-          distribution_time: distributionTime.toISOString(),
-          expiry_time: expiryTime.toISOString(),
-        }, { onConflict: 'profit_date' })
-
-      if (error) throw error
-
-      // Create profit claims for all members with active deposits
-      const { data: walletsWithDeposits } = await supabase
-        .from('wallets')
-        .select('user_id, balance, initial_capital')
-        .eq('wallet_type', 'asset')
-        .gt('initial_capital', 0)
-        .eq('cap_reached', false)
-
-      if (walletsWithDeposits) {
-        // Get today's profit ID
-        const { data: todayProfit } = await supabase
-          .from('daily_profits')
-          .select('id')
-          .eq('profit_date', today)
-          .single()
-
-        if (todayProfit) {
-          // Create profit claims - no booster anymore
-          const claims = walletsWithDeposits.map(wallet => {
-            const totalPercentage = parseFloat(profitPercentage) // Rate langsung dari input
-            const amount = (wallet.initial_capital * totalPercentage) / 100
-
-            return {
-              user_id: wallet.user_id,
-              daily_profit_id: todayProfit.id,
-              base_percentage: totalPercentage,
-              booster_percentage: 0,
-              total_percentage: totalPercentage,
-              amount: amount,
-              status: 'available',
-            }
-          })
-
-          await supabase
-            .from('profit_claims')
-            .upsert(claims, { onConflict: 'user_id,daily_profit_id' })
-        }
-      }
-
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
-    } catch (error) {
-      console.error('Error generating profit:', error)
-    } finally {
-      setGeneratingProfit(false)
-    }
   }
 
   if (loading) {
@@ -172,16 +77,13 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* Maintenance Mode */}
       <Card className={settings.maintenance_mode ? 'border-warning' : ''}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-warning" />
             Maintenance Mode
           </CardTitle>
-          <CardDescription>
-            Lock the platform for maintenance. Users will see a maintenance message.
-          </CardDescription>
+          <CardDescription>Lock the platform for maintenance. Users will see a maintenance message.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
@@ -192,7 +94,7 @@ export default function SettingsPage() {
               </p>
             </div>
             <Switch
-              checked={settings.maintenance_mode}
+              checked={!!settings.maintenance_mode}
               onCheckedChange={(checked) => updateSetting('maintenance_mode', checked)}
               disabled={saving}
             />
@@ -200,56 +102,33 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Daily Profit Generation */}
-      <Card>
+      <Card className="border-primary/20 bg-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5 text-primary" />
-            Daily Profit Generation
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Daily Profit
           </CardTitle>
-          <CardDescription>
-            Generate {"today's"} random profit (1-2%) and create profit claims for all eligible members.
-          </CardDescription>
+          <CardDescription>Trigger and manage daily profit distributions from the dedicated page.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button
-            onClick={generateDailyProfit}
-            disabled={generatingProfit}
-            className="w-full"
-          >
-            {generatingProfit ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Generate {"Today's"} Profit
-              </>
-            )}
-          </Button>
-          <p className="mt-2 text-center text-sm text-muted-foreground">
-            This should be run once daily at 10:00 AM
-          </p>
+          <Link href="/vx-ctrl-9f2a/profit">
+            <Button variant="outline" className="w-full">Go to Profit Control</Button>
+          </Link>
         </CardContent>
       </Card>
 
-      {/* Fee Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
             Withdrawal Fees
           </CardTitle>
-          <CardDescription>
-            Configure withdrawal fee percentages
-          </CardDescription>
+          <CardDescription>Configure withdrawal fee percentages</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <Label>{"Fee < 100% Profit"}</Label>
+              <Label>{'Fee < 100% Profit'}</Label>
               <div className="relative">
                 <Input
                   type="number"
@@ -262,9 +141,8 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-muted-foreground">Asset wallet, profit under 100%</p>
             </div>
-
             <div className="space-y-2">
-              <Label>{"Fee >= 100% Profit"}</Label>
+              <Label>{'Fee >= 100% Profit'}</Label>
               <div className="relative">
                 <Input
                   type="number"
@@ -277,7 +155,6 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-muted-foreground">Asset wallet, profit 100% or more</p>
             </div>
-
             <div className="space-y-2">
               <Label>Bonus Wallet Fee</Label>
               <div className="relative">
@@ -296,13 +173,10 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* ROI Cap */}
       <Card>
         <CardHeader>
           <CardTitle>ROI Cap Settings</CardTitle>
-          <CardDescription>
-            Maximum return on investment relative to initial capital
-          </CardDescription>
+          <CardDescription>Maximum return on investment relative to initial capital</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">

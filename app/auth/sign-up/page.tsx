@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, CheckCircle, ArrowLeft, Eye, EyeOff, Lock, Shield } from 'lucide-react'
+import { Loader2, CheckCircle, Eye, EyeOff, Lock, Shield, KeyRound } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,10 +17,14 @@ function SignUpFormContent() {
   const router = useRouter()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [withdrawalPin, setWithdrawalPin] = useState('')
+  const [confirmWithdrawalPin, setConfirmWithdrawalPin] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [showWithdrawalPin, setShowWithdrawalPin] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lockedReferral, setLockedReferral] = useState<string | null>(null)
@@ -55,6 +59,24 @@ function SignUpFormContent() {
       return
     }
 
+    if (!/^[a-z0-9_]{3,24}$/.test(username.trim().toLowerCase())) {
+      setError('Username must be 3-24 characters using letters, numbers, or underscores only')
+      setLoading(false)
+      return
+    }
+
+    if (!/^\d{6}$/.test(withdrawalPin)) {
+      setError('Withdrawal PIN must be exactly 6 digits')
+      setLoading(false)
+      return
+    }
+
+    if (withdrawalPin !== confirmWithdrawalPin) {
+      setError('Withdrawal PINs do not match')
+      setLoading(false)
+      return
+    }
+
     try {
       // Use our custom API that bypasses email confirmation
       const response = await fetch('/api/auth/register', {
@@ -62,9 +84,11 @@ function SignUpFormContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
+          username,
           password,
           fullName,
           referralCode: lockedReferral,
+          withdrawalPin,
         }),
       })
 
@@ -138,6 +162,33 @@ function SignUpFormContent() {
               <Label htmlFor="email" className="text-slate-300">Email Address</Label>
               <Input id="email" type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={loading} className="h-12 border-slate-700 bg-[#2D2D2F] text-white placeholder:text-slate-500 focus:border-blue-500 focus:bg-[#2D2D2F]" />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="username" className="text-slate-300">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="Choose a unique username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24))}
+                required
+                disabled={loading}
+                className="h-12 border-slate-700 bg-[#2D2D2F] text-white placeholder:text-slate-500 focus:border-blue-500 focus:bg-[#2D2D2F]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="sponsor" className="text-slate-300">Sponsor Username</Label>
+              <Input
+                id="sponsor"
+                type="text"
+                value={lockedReferral || 'Direct registration'}
+                readOnly
+                disabled
+                className="h-12 border-slate-700 bg-[#202022] text-slate-300"
+              />
+              <p className="text-xs text-slate-500">Sponsor is locked from the invitation link and cannot be edited.</p>
+            </div>
             
             <div className="space-y-2">
               <Label htmlFor="password" className="text-slate-300">Password</Label>
@@ -157,6 +208,49 @@ function SignUpFormContent() {
                   {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="withdrawalPin" className="text-slate-300">6-Digit Withdrawal PIN</Label>
+              <div className="relative">
+                <Input
+                  id="withdrawalPin"
+                  type={showWithdrawalPin ? 'text' : 'password'}
+                  inputMode="numeric"
+                  placeholder="Create 6-digit PIN"
+                  value={withdrawalPin}
+                  onChange={(e) => setWithdrawalPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required
+                  disabled={loading}
+                  className="h-12 border-slate-700 bg-[#2D2D2F] pr-10 text-center font-mono text-xl tracking-[0.4em] text-white placeholder:text-sm placeholder:tracking-normal placeholder:text-slate-500 focus:border-blue-500 focus:bg-[#2D2D2F]"
+                  maxLength={6}
+                />
+                <button type="button" onClick={() => setShowWithdrawalPin(!showWithdrawalPin)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                  {showWithdrawalPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmWithdrawalPin" className="text-slate-300">Confirm Withdrawal PIN</Label>
+              <div className="relative">
+                <Input
+                  id="confirmWithdrawalPin"
+                  type="password"
+                  inputMode="numeric"
+                  placeholder="Confirm 6-digit PIN"
+                  value={confirmWithdrawalPin}
+                  onChange={(e) => setConfirmWithdrawalPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required
+                  disabled={loading}
+                  className="h-12 border-slate-700 bg-[#2D2D2F] text-center font-mono text-xl tracking-[0.4em] text-white placeholder:text-sm placeholder:tracking-normal placeholder:text-slate-500 focus:border-blue-500 focus:bg-[#2D2D2F]"
+                  maxLength={6}
+                />
+              </div>
+              <p className="flex items-center gap-2 text-xs text-slate-500">
+                <KeyRound className="h-3.5 w-3.5" />
+                This PIN is required for every withdrawal.
+              </p>
             </div>
 
             {error && (

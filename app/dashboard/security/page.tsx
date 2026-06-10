@@ -26,10 +26,20 @@ export default function SecurityPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [showNewPin, setShowNewPin] = useState(false)
   const [saving, setSaving] = useState(false)
   const [sendingOtp, setSendingOtp] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
   const [otp, setOtp] = useState('')
+  const [pinSaving, setPinSaving] = useState(false)
+  const [pinOtpSending, setPinOtpSending] = useState(false)
+  const [pinOtpSent, setPinOtpSent] = useState(false)
+  const [pinOtp, setPinOtp] = useState('')
+  const [pinSet, setPinSet] = useState(false)
+  const [pinForm, setPinForm] = useState({
+    newPin: '',
+    confirmPin: '',
+  })
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [passwords, setPasswords] = useState({
@@ -47,6 +57,9 @@ export default function SecurityPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUserEmail(user.email || null)
+        const res = await fetch('/api/user/withdrawal-pin')
+        const data = await res.json()
+        if (res.ok) setPinSet(Boolean(data.pinSet))
       } else {
         // Demo mode
         setUserEmail('demo@vortex.com')
@@ -131,25 +144,95 @@ export default function SecurityPage() {
     }
   }
 
+  const handleSendPinOtp = async () => {
+    setPinOtpSending(true)
+    setMessage(null)
+
+    try {
+      const res = await fetch('/api/user/withdrawal-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send_otp' }),
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setPinOtpSent(true)
+        setMessage({ type: 'success', text: 'Withdrawal PIN OTP sent to your email!' })
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to send PIN OTP' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Network error. Please try again.' })
+    } finally {
+      setPinOtpSending(false)
+    }
+  }
+
+  const handleUpdatePin = async () => {
+    if (pinOtp.length !== 6) {
+      setMessage({ type: 'error', text: 'Please enter the 6-digit OTP code sent to your email' })
+      return
+    }
+    if (!/^\d{6}$/.test(pinForm.newPin)) {
+      setMessage({ type: 'error', text: 'Withdrawal PIN must be exactly 6 digits' })
+      return
+    }
+    if (pinForm.newPin !== pinForm.confirmPin) {
+      setMessage({ type: 'error', text: 'Withdrawal PINs do not match' })
+      return
+    }
+
+    setPinSaving(true)
+    setMessage(null)
+
+    try {
+      const res = await fetch('/api/user/withdrawal-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reset_pin',
+          otp: pinOtp,
+          newPin: pinForm.newPin,
+        }),
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Withdrawal PIN updated successfully!' })
+        setPinSet(true)
+        setPinOtp('')
+        setPinOtpSent(false)
+        setPinForm({ newPin: '', confirmPin: '' })
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to update withdrawal PIN' })
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Network error. Please try again.' })
+    } finally {
+      setPinSaving(false)
+    }
+  }
+
   // Demo login sessions
   const loginSessions = [
     { 
       device: 'Chrome on Windows', 
-      location: 'Jakarta, Indonesia', 
+      location: 'New York, United States', 
       ip: '103.xxx.xxx.xxx',
       time: 'Active now',
       current: true 
     },
     { 
       device: 'Safari on iPhone', 
-      location: 'Jakarta, Indonesia', 
+      location: 'New York, United States', 
       ip: '103.xxx.xxx.xxx',
       time: '2 hours ago',
       current: false 
     },
     { 
       device: 'Firefox on MacOS', 
-      location: 'Surabaya, Indonesia', 
+      location: 'Los Angeles, United States', 
       ip: '180.xxx.xxx.xxx',
       time: 'Yesterday',
       current: false 
@@ -376,6 +459,136 @@ export default function SecurityPage() {
                 onCheckedChange={setLoginAlerts}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Withdrawal PIN */}
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Withdrawal PIN
+            </CardTitle>
+            <CardDescription>
+              {pinSet ? 'Change your 6-digit withdrawal PIN with email OTP.' : 'Set your 6-digit withdrawal PIN with email OTP.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!pinOtpSent ? (
+              <>
+                <div className="rounded-lg bg-blue-500/10 p-3 text-sm text-blue-700">
+                  <div className="flex items-center gap-2 font-medium">
+                    <Mail className="h-4 w-4 flex-shrink-0" />
+                    <span>Email OTP Required</span>
+                  </div>
+                  <p className="mt-1 text-xs text-blue-600">
+                    We will send an OTP to {userEmail || 'your email'} before changing your withdrawal PIN.
+                  </p>
+                </div>
+                <Button onClick={handleSendPinOtp} disabled={pinOtpSending} className="w-full">
+                  {pinOtpSending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending OTP...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="mr-2 h-4 w-4" />
+                      Send PIN OTP
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">OTP Code</label>
+                  <Input
+                    type="text"
+                    value={pinOtp}
+                    onChange={(e) => setPinOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Enter OTP"
+                    className="text-center text-lg tracking-widest font-mono"
+                    maxLength={6}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Check your email for the code.{' '}
+                    <button
+                      type="button"
+                      onClick={handleSendPinOtp}
+                      disabled={pinOtpSending}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Resend OTP
+                    </button>
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">New 6-Digit PIN</label>
+                  <div className="relative">
+                    <Input
+                      type={showNewPin ? 'text' : 'password'}
+                      inputMode="numeric"
+                      value={pinForm.newPin}
+                      onChange={(e) => setPinForm({ ...pinForm, newPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                      placeholder="Enter new PIN"
+                      className="text-center text-lg tracking-widest font-mono pr-10"
+                      maxLength={6}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2"
+                      onClick={() => setShowNewPin(!showNewPin)}
+                    >
+                      {showNewPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Confirm New PIN</label>
+                  <Input
+                    type="password"
+                    inputMode="numeric"
+                    value={pinForm.confirmPin}
+                    onChange={(e) => setPinForm({ ...pinForm, confirmPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                    placeholder="Confirm new PIN"
+                    className="text-center text-lg tracking-widest font-mono"
+                    maxLength={6}
+                  />
+                </div>
+
+                <Button
+                  onClick={handleUpdatePin}
+                  disabled={pinSaving || pinOtp.length !== 6 || pinForm.newPin.length !== 6 || pinForm.confirmPin.length !== 6}
+                  className="w-full"
+                >
+                  {pinSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Withdrawal PIN'
+                  )}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setPinOtpSent(false)
+                    setPinOtp('')
+                    setPinForm({ newPin: '', confirmPin: '' })
+                  }}
+                  className="w-full text-muted-foreground"
+                >
+                  Cancel
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 

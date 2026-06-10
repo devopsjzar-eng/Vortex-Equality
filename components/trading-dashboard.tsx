@@ -434,23 +434,10 @@ export function TradingDashboard({ dailyProfitRate = 1.5 }: { dailyProfitRate?: 
         </div>
       </div>
 
-      {/* Partners Footer */}
-      <div className="rounded-xl border border-slate-700/50 bg-slate-800/20 p-4">
-        <p className="mb-3 text-center text-xs text-slate-500">Powered by</p>
-        <div className="flex flex-wrap items-center justify-center gap-6">
-          <div className="flex items-center gap-2 text-slate-400">
-            <div className="h-6 w-6 rounded bg-gradient-to-br from-slate-1000 to-blue-600" />
-            <span className="text-sm font-medium">NOWPayments</span>
-          </div>
-          <div className="flex items-center gap-2 text-slate-400">
-            <div className="h-6 w-6 rounded bg-gradient-to-br from-blue-500 to-blue-600" />
-            <span className="text-sm font-medium">TradingView</span>
-          </div>
-          <div className="flex items-center gap-2 text-slate-400">
-            <div className="h-6 w-6 rounded bg-gradient-to-br from-blue-500 to-blue-600" />
-            <span className="text-sm font-medium">Reuters Data</span>
-          </div>
-        </div>
+      <div className="apple-matte-surface p-4">
+        <p className="text-center text-xs text-slate-500">
+          Vortex Equality market simulation. Data is presented for member dashboard analysis.
+        </p>
       </div>
     </div>
   )

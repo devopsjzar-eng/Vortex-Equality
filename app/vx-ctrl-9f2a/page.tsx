@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  DollarSign, 
-  Users, 
-  ArrowDownToLine, 
+import {
+  DollarSign,
+  Users,
+  ArrowDownToLine,
   ArrowUpFromLine,
   TrendingUp,
   Clock,
@@ -36,49 +36,37 @@ export default function AdminOverviewPage() {
   const supabase = createClient()
 
   const fetchStats = useCallback(async () => {
-    // Get total members
     const { count: membersCount } = await supabase
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .eq('is_admin', false)
 
-    // Get total deposits
     const { data: deposits } = await supabase
-      .from('transactions')
-      .select('net_amount')
-      .eq('type', 'deposit')
-      .eq('status', 'success')
+      .from('financial_deposits')
+      .select('amount')
 
-    const totalDeposits = deposits?.reduce((sum, d) => sum + d.net_amount, 0) || 0
+    const totalDeposits = deposits?.reduce((sum, d) => sum + Number(d.amount || 0), 0) || 0
 
-    // Get total withdrawals
     const { data: withdrawals } = await supabase
-      .from('transactions')
+      .from('financial_withdrawals')
       .select('net_amount')
-      .eq('type', 'withdrawal')
-      .eq('status', 'success')
+      .eq('status', 'completed')
 
-    const totalWithdrawals = withdrawals?.reduce((sum, w) => sum + w.net_amount, 0) || 0
+    const totalWithdrawals = withdrawals?.reduce((sum, w) => sum + Number(w.net_amount || 0), 0) || 0
 
-    // Get pending withdrawals
     const { count: pendingCount } = await supabase
-      .from('transactions')
+      .from('financial_withdrawals')
       .select('*', { count: 'exact', head: true })
-      .eq('type', 'withdrawal')
       .eq('status', 'pending')
 
-    // Get today's profit distributed
     const today = new Date().toISOString().split('T')[0]
     const { data: todayProfits } = await supabase
-      .from('transactions')
-      .select('net_amount')
-      .eq('type', 'profit_claim')
-      .eq('status', 'success')
+      .from('financial_profit_claims')
+      .select('amount')
       .gte('created_at', today)
 
-    const todayProfit = todayProfits?.reduce((sum, p) => sum + p.net_amount, 0) || 0
+    const todayProfit = todayProfits?.reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0
 
-    // Get maintenance mode
     const { data: maintenanceSetting } = await supabase
       .from('system_settings')
       .select('value')
@@ -100,14 +88,34 @@ export default function AdminOverviewPage() {
 
   useEffect(() => {
     fetchStats()
-  }, [fetchStats])
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount)
-  }
+    const profilesChannel = supabase
+      .channel('vx-admin-profiles')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchStats)
+      .subscribe()
+
+    const depositsChannel = supabase
+      .channel('vx-admin-deposits')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'financial_deposits' }, fetchStats)
+      .subscribe()
+
+    const withdrawalsChannel = supabase
+      .channel('vx-admin-withdrawals')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_withdrawals' }, fetchStats)
+      .subscribe()
+
+    const interval = setInterval(fetchStats, 30000)
+
+    return () => {
+      profilesChannel.unsubscribe()
+      depositsChannel.unsubscribe()
+      withdrawalsChannel.unsubscribe()
+      clearInterval(interval)
+    }
+  }, [fetchStats, supabase])
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
 
   if (loading) {
     return (
@@ -124,7 +132,6 @@ export default function AdminOverviewPage() {
         <p className="text-muted-foreground">Real-time platform statistics and cash flow</p>
       </div>
 
-      {/* Maintenance Warning */}
       {maintenanceMode && (
         <Card className="border-warning bg-warning/10">
           <CardContent className="flex items-center gap-3 p-4">
@@ -137,7 +144,6 @@ export default function AdminOverviewPage() {
         </Card>
       )}
 
-      {/* Main Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -182,7 +188,6 @@ export default function AdminOverviewPage() {
         </Card>
       </div>
 
-      {/* Secondary Stats */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -207,7 +212,6 @@ export default function AdminOverviewPage() {
         </Card>
       </div>
 
-      {/* Quick Info */}
       <Card>
         <CardHeader>
           <CardTitle>Platform Summary</CardTitle>
@@ -217,7 +221,7 @@ export default function AdminOverviewPage() {
             <div className="rounded-lg bg-muted/50 p-4">
               <p className="text-sm text-muted-foreground">Average Deposit</p>
               <p className="text-xl font-bold">
-                {stats.totalMembers > 0 
+                {stats.totalMembers > 0
                   ? formatCurrency(stats.totalDeposits / stats.totalMembers)
                   : '$0.00'}
               </p>
@@ -225,7 +229,7 @@ export default function AdminOverviewPage() {
             <div className="rounded-lg bg-muted/50 p-4">
               <p className="text-sm text-muted-foreground">Withdrawal Rate</p>
               <p className="text-xl font-bold">
-                {stats.totalDeposits > 0 
+                {stats.totalDeposits > 0
                   ? `${((stats.totalWithdrawals / stats.totalDeposits) * 100).toFixed(1)}%`
                   : '0%'}
               </p>

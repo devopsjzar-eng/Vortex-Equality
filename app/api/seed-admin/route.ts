@@ -30,16 +30,16 @@ export async function POST() {
     if (adminUser) {
       userId = adminUser.id
       await supabaseAdmin.auth.admin.updateUserById(userId, {
-        password: 'admin123456',
+        password: 'admin098@',
         email_confirm: true
       })
     } else {
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: 'admin@vortex.com',
-        password: 'admin123456',
+        password: 'admin098@',
         email_confirm: true,
         user_metadata: {
-          full_name: 'Master Council',
+          full_name: 'Vortex Admin',
           is_admin: true
         }
       })
@@ -54,14 +54,14 @@ export async function POST() {
     // Update profile to be admin
     await supabaseAdmin
       .from('profiles')
-      .update({ is_admin: true, full_name: 'Master Council' })
+      .update({ is_admin: true, full_name: 'Vortex Admin' })
       .eq('id', userId)
 
     return NextResponse.json({ 
       success: true, 
       message: 'Admin account ready!',
       email: 'admin@vortex.com',
-      password: 'admin123456'
+      password: 'admin098@'
     })
 
   } catch (error: unknown) {

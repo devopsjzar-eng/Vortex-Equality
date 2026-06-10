@@ -1,11 +1,12 @@
 export type Profile = {
   id: string
   email: string
+  username: string | null
   full_name: string | null
   phone: string | null
   referral_code: string
   referred_by: string | null
-  rank: 'P1' | 'P2' | 'P3' | 'P4' | 'P5'
+  rank: 'Bronze' | 'P1' | 'P2' | 'P3' | 'P4' | 'P5'
   total_deposit: number
   total_direct_referrals: number
   group_turnover: number
@@ -25,6 +26,33 @@ export type Wallet = {
   cap_reached: boolean
   created_at: string
   updated_at: string
+}
+
+export type FinancialWallet = {
+  user_id: string
+  main_balance: number
+  active_deposit: number
+  network_bonus_balance: number
+  unclaimed_profit: number
+  total_claimed_profit: number
+  total_withdrawn: number
+  is_bep_reached: boolean
+  is_maxed_out: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type LedgerEntry = {
+  id: string
+  user_id: string | null
+  related_user_id: string | null
+  entry_type: string
+  amount: number
+  balance_after: number | null
+  description: string | null
+  metadata: Record<string, unknown>
+  created_by: string | null
+  created_at: string
 }
 
 export type Transaction = {
@@ -117,8 +145,9 @@ export const RANK_REQUIREMENTS: RankRequirements = {
 }
 
 export const RANK_REWARDS: Record<string, number> = {
-  P2: 100,
+  P1: 100,
+  P2: 300,
   P3: 500,
-  P4: 2500,
-  P5: 10000,
+  P4: 3000,
+  P5: 5000,
 }

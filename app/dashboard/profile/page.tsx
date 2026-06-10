@@ -79,7 +79,7 @@ export default function ProfilePage() {
         setFormData({
           full_name: 'Demo User',
           phone: '+62 812 3456 7890',
-          address: 'Jakarta, Indonesia',
+          address: 'New York, United States',
         })
       }
     } catch (error) {

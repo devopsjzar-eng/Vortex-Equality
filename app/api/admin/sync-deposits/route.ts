@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/require-admin'
 
 function getSupabaseAdmin() {
   return createClient(
@@ -10,6 +11,9 @@ function getSupabaseAdmin() {
 
 // Admin: manually sync a pending deposit to credit wallet
 export async function POST(request: NextRequest) {
+  const { errorResponse } = await requireAdmin()
+  if (errorResponse) return errorResponse
+
   try {
     const supabaseAdmin = getSupabaseAdmin()
     const { transactionId, userId, amount } = await request.json()
@@ -85,6 +89,9 @@ export async function POST(request: NextRequest) {
 
 // Admin: get all pending deposits
 export async function GET() {
+  const { errorResponse } = await requireAdmin()
+  if (errorResponse) return errorResponse
+
   try {
     const supabaseAdmin = getSupabaseAdmin()
     const { data, error } = await supabaseAdmin

@@ -139,7 +139,7 @@ export default function LandingPage() {
     },
     {
       name: 'David K.',
-      location: 'Indonesia',
+      location: 'Global',
       text: 'Withdrawal process is fast and smooth. Very professional platform.',
       avatar: 'D'
     }

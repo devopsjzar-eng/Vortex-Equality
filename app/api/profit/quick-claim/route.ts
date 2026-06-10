@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       const [hours, minutes] = testTimeParam.split(':').map(Number)
       now = new Date()
       now.setHours(hours, minutes, 0, 0)
-      console.log('[v0] API TEST MODE: Using testTime:', testTimeParam)
+      console.log('[Vortex] API TEST MODE: Using testTime:', testTimeParam)
     }
 
     console.log('[Quick Claim] Starting claim for user:', userId, 'at time:', now.toLocaleTimeString('en-US', { timeZone: 'Asia/Jakarta' }))
@@ -294,3 +294,4 @@ export async function GET() {
   const todayRate = getTodayRate()
   return NextResponse.json({ rate: todayRate })
 }
+

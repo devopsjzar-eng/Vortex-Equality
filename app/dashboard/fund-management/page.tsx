@@ -740,7 +740,7 @@ export default function FundManagementPage() {
               Data is updated in real-time. Past performance does not guarantee future results.
             </p>
             <p className="text-xs text-slate-400">
-              Powered by <span className="font-semibold text-blue-400">Vortex Trading Engine</span>
+              Vortex Trading Engine
             </p>
           </div>
         </div>

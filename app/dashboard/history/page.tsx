@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Transaction } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -20,6 +18,7 @@ import {
   Filter,
   TrendingUp,
   Eye,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -31,6 +30,14 @@ const typeIcons: Record<string, any> = {
   sponsor_bonus: Gift,
   rank_reward: Trophy,
   admin_credit: CreditCard,
+  top_up: ArrowDownToLine,
+  profit_allocation: TrendingUp,
+  withdrawal_request: ArrowUpFromLine,
+  withdrawal_fee: ArrowUpFromLine,
+  withdrawal_completed: ArrowUpFromLine,
+  referral_commission: Gift,
+  admin_adjustment: CreditCard,
+  referral_correction: Users,
 }
 
 const typeLabels: Record<string, string> = {
@@ -41,6 +48,14 @@ const typeLabels: Record<string, string> = {
   sponsor_bonus: 'Sponsor Bonus',
   rank_reward: 'Rank Reward',
   admin_credit: 'Admin Credit',
+  top_up: 'Top-Up',
+  profit_allocation: 'Profit Allocation',
+  withdrawal_request: 'Withdrawal Request',
+  withdrawal_fee: 'Withdrawal Fee',
+  withdrawal_completed: 'Withdrawal Completed',
+  referral_commission: 'Referral Commission',
+  admin_adjustment: 'Admin Adjustment',
+  referral_correction: 'Referral Correction',
 }
 
 const statusColors: Record<string, string> = {
@@ -65,27 +80,49 @@ const statusIcons: Record<string, any> = {
   claimed: CheckCircle,
 }
 
+type HistoryTransaction = {
+  id: string
+  type: string
+  amount: number
+  fee: number
+  net_amount: number
+  status: string
+  wallet_type: string
+  crypto_address: string | null
+  external_ref: string | null
+  created_at: string
+}
+
 export default function HistoryPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [transactions, setTransactions] = useState<HistoryTransaction[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('all')
-  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
+  const [selectedTx, setSelectedTx] = useState<HistoryTransaction | null>(null)
   const [showReceipt, setShowReceipt] = useState(false)
-  const supabase = createClient()
 
   const fetchData = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const response = await fetch('/api/activity', { credentials: 'include' })
+    const result = await response.json()
 
-    const { data: txResult } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-
-    if (txResult) setTransactions(txResult)
+    if (response.ok && result.success) {
+      setTransactions((result.entries || []).map((entry: any) => {
+        const amount = Number(entry.amount || 0)
+        return {
+          id: entry.id,
+          type: entry.entry_type,
+          amount: Math.abs(amount),
+          fee: Number(entry.metadata?.fee_amount || 0),
+          net_amount: Math.abs(amount),
+          status: 'completed',
+          wallet_type: 'main',
+          crypto_address: null,
+          external_ref: String(entry.metadata?.external_id || entry.metadata?.withdrawal_id || ''),
+          created_at: entry.created_at,
+        }
+      }))
+    }
     setLoading(false)
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     fetchData()
@@ -107,7 +144,7 @@ export default function HistoryPage() {
     })
   }
 
-  const handleViewReceipt = (tx: Transaction) => {
+  const handleViewReceipt = (tx: HistoryTransaction) => {
     setSelectedTx(tx)
     setShowReceipt(true)
   }
@@ -117,13 +154,13 @@ export default function HistoryPage() {
     : transactions.filter(tx => tx.type === filter)
 
   // Calculate stats from transactions
-  const profitTransactions = transactions.filter(t => t.type === 'profit_claim' && t.status === 'success')
+  const profitTransactions = transactions.filter(t => t.type === 'profit_claim' && (t.status === 'success' || t.status === 'completed'))
   const totalProfitsClaimed = profitTransactions.reduce((sum, t) => sum + Number(t.amount), 0)
   const totalClaimedDays = profitTransactions.length
 
   const stats = {
-    totalDeposits: transactions.filter(t => t.type === 'deposit' && (t.status === 'success' || t.status === 'completed')).reduce((sum, t) => sum + t.net_amount, 0),
-    totalWithdrawals: transactions.filter(t => t.type === 'withdrawal' && (t.status === 'success' || t.status === 'completed')).reduce((sum, t) => sum + t.net_amount, 0),
+    totalDeposits: transactions.filter(t => (t.type === 'deposit' || t.type === 'top_up') && (t.status === 'success' || t.status === 'completed')).reduce((sum, t) => sum + t.net_amount, 0),
+    totalWithdrawals: transactions.filter(t => (t.type === 'withdrawal' || t.type === 'withdrawal_request') && (t.status === 'success' || t.status === 'completed')).reduce((sum, t) => sum + t.net_amount, 0),
     totalProfits: totalProfitsClaimed,
   }
 
@@ -166,7 +203,7 @@ export default function HistoryPage() {
         <Card className="border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-purple-600/5">
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Total Bonuses</p>
-            <p className="text-xl font-bold text-purple-500">{formatCurrency(transactions.filter(t => (t.type === 'sponsor_bonus' || t.type === 'referral_bonus' || t.type === 'rank_reward') && t.status === 'success').reduce((sum, t) => sum + t.net_amount, 0))}</p>
+            <p className="text-xl font-bold text-purple-500">{formatCurrency(transactions.filter(t => (t.type === 'sponsor_bonus' || t.type === 'referral_bonus' || t.type === 'referral_commission' || t.type === 'rank_reward') && (t.status === 'success' || t.status === 'completed')).reduce((sum, t) => sum + t.net_amount, 0))}</p>
           </CardContent>
         </Card>
       </div>
@@ -189,7 +226,7 @@ export default function HistoryPage() {
               </TabsTrigger>
               <TabsTrigger value="deposit">Deposits</TabsTrigger>
               <TabsTrigger value="withdrawal">Withdrawals</TabsTrigger>
-              <TabsTrigger value="sponsor_bonus">Bonuses</TabsTrigger>
+            <TabsTrigger value="referral_commission">Bonuses</TabsTrigger>
             </TabsList>
 
             <TabsContent value={filter} className="mt-0">
@@ -207,7 +244,7 @@ export default function HistoryPage() {
                     {filteredTransactions.map((tx) => {
                       const Icon = typeIcons[tx.type] || Receipt
                       const StatusIcon = statusIcons[tx.status] || Clock
-                      const isPositive = ['deposit', 'profit_claim', 'referral_bonus', 'sponsor_bonus', 'rank_reward', 'admin_credit'].includes(tx.type)
+                      const isPositive = ['deposit', 'top_up', 'profit_claim', 'profit_allocation', 'referral_bonus', 'sponsor_bonus', 'referral_commission', 'rank_reward', 'admin_credit', 'admin_adjustment'].includes(tx.type)
                       const isSuccess = tx.status === 'success' || tx.status === 'completed'
                       return (
                         <div

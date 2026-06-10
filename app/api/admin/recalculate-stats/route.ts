@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '@/lib/require-admin'
 
 // Service role client - bypasses ALL RLS
 function getSupabaseAdmin() {
@@ -30,9 +31,12 @@ async function calculateGroupTurnover(supabase: any, userId: string): Promise<nu
 }
 
 export async function POST(request: Request) {
+  const { errorResponse } = await requireAdmin()
+  if (errorResponse) return errorResponse
+
   try {
     const supabaseAdmin = getSupabaseAdmin()
-    
+
     // Get all profiles
     const { data: allProfiles, error: profilesError } = await supabaseAdmin
       .from('profiles')

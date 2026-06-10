@@ -57,7 +57,7 @@ export default function SupportPage() {
     },
     {
       question: 'How do I advance in leadership ranks?',
-      answer: 'Each rank has specific requirements: direct referrals, group omset, minimum personal asset, and qualifying legs. Once all requirements are met, your rank upgrades automatically and you receive the corresponding salary.'
+      answer: 'Each rank has specific requirements: direct referrals, group volume, personal Active Asset, and qualifying legs. Once requirements are met, your salary claim button becomes available under the 30-day claim-cycle rules.'
     }
   ]
 

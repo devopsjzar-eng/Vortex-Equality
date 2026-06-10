@@ -1,141 +1,163 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { generateAndSaveNetworkTree } from '@/lib/network-tree-generator'
+import { requireAdmin } from '@/lib/require-admin'
 
-// Service role client - bypasses ALL RLS
 function getSupabaseAdmin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) throw new Error('Supabase credentials not configured')
+  return createClient(url, key)
 }
 
 export async function POST(request: Request) {
+  const { errorResponse } = await requireAdmin()
+  if (errorResponse) return errorResponse
+
   try {
     const supabaseAdmin = getSupabaseAdmin()
     const { transactionId } = await request.json()
 
     if (!transactionId) {
-      return NextResponse.json(
-        { error: 'Transaction ID required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Deposit ID required' }, { status: 400 })
     }
 
-    // Get transaction details
-    const { data: transaction, error: txError } = await supabaseAdmin
+    const { data: cryptoOrder } = await supabaseAdmin
+      .from('crypto_deposit_orders')
+      .select('*')
+      .eq('id', transactionId)
+      .maybeSingle()
+
+    if (cryptoOrder) {
+      if (cryptoOrder.status === 'confirmed') {
+        return NextResponse.json({
+          success: true,
+          message: 'Deposit already approved',
+        })
+      }
+
+      const amount = Number(cryptoOrder.expected_amount || 0)
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return NextResponse.json({ error: 'Deposit amount is invalid' }, { status: 400 })
+      }
+
+      const approvedAt = new Date().toISOString()
+      const metadata = {
+        ...(cryptoOrder.metadata || {}),
+        admin_approved: true,
+        approved_at: approvedAt,
+      }
+
+      const { error: topUpError } = await supabaseAdmin.rpc('apply_user_top_up', {
+        p_user_id: cryptoOrder.user_id,
+        p_amount: amount,
+        p_source: cryptoOrder.provider || 'admin-manual',
+        p_external_id: cryptoOrder.provider_payment_id,
+        p_metadata: metadata,
+        p_referral_commission_percentage: 8,
+      })
+
+      if (topUpError) {
+        return NextResponse.json({ error: topUpError.message }, { status: 500 })
+      }
+
+      await supabaseAdmin
+        .from('crypto_deposit_orders')
+        .update({
+          status: 'confirmed',
+          confirmed_amount: amount,
+          confirmed_at: approvedAt,
+          metadata,
+        })
+        .eq('id', cryptoOrder.id)
+
+      await supabaseAdmin.from('admin_logs').insert({
+        action: 'deposit_approved',
+        target_user_id: cryptoOrder.user_id,
+        metadata: {
+          crypto_deposit_order_id: cryptoOrder.id,
+          provider_payment_id: cryptoOrder.provider_payment_id,
+          amount,
+        },
+      })
+
+      return NextResponse.json({
+        success: true,
+        message: 'Deposit approved successfully',
+      })
+    }
+
+    const { data: financialDeposit } = await supabaseAdmin
+      .from('financial_deposits')
+      .select('*')
+      .eq('id', transactionId)
+      .maybeSingle()
+
+    if (financialDeposit) {
+      return NextResponse.json({
+        success: true,
+        message: 'Deposit is already confirmed',
+      })
+    }
+
+    const { data: legacyTransaction, error: legacyError } = await supabaseAdmin
       .from('transactions')
       .select('*')
       .eq('id', transactionId)
-      .single()
+      .eq('type', 'deposit')
+      .maybeSingle()
 
-    if (txError || !transaction) {
-      return NextResponse.json(
-        { error: 'Transaction not found' },
-        { status: 404 }
-      )
+    if (legacyError || !legacyTransaction) {
+      return NextResponse.json({ error: 'Deposit not found' }, { status: 404 })
     }
 
-    if (transaction.type !== 'deposit') {
-      return NextResponse.json(
-        { error: 'Only deposit transactions can be approved' },
-        { status: 400 }
-      )
+    const amount = Number(legacyTransaction.amount || 0)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ error: 'Deposit amount is invalid' }, { status: 400 })
     }
 
-    // Update transaction status to success
-    const { error: updateError } = await supabaseAdmin
+    const { error: topUpError } = await supabaseAdmin.rpc('apply_user_top_up', {
+      p_user_id: legacyTransaction.user_id,
+      p_amount: amount,
+      p_source: 'manual-admin',
+      p_external_id: legacyTransaction.external_ref || legacyTransaction.id,
+      p_metadata: {
+        legacy_transaction_id: legacyTransaction.id,
+        receipt: legacyTransaction.receipt_data || null,
+      },
+      p_referral_commission_percentage: 8,
+    })
+
+    if (topUpError) {
+      return NextResponse.json({ error: topUpError.message }, { status: 500 })
+    }
+
+    await supabaseAdmin
       .from('transactions')
       .update({ status: 'success', updated_at: new Date().toISOString() })
-      .eq('id', transactionId)
+      .eq('id', legacyTransaction.id)
 
-    if (updateError) throw updateError
-
-    // Get profile data for tracking
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('*')
-      .eq('id', transaction.user_id)
-      .single()
-
-    if (!profile) {
-      return NextResponse.json(
-        { error: 'Member not found' },
-        { status: 404 }
-      )
-    }
-
-    // Check if this is FIRST DEPOSIT or TOP-UP
-    const isFirstDeposit = profile.initial_capital === 0
-    
-    if (isFirstDeposit) {
-      // FIRST DEPOSIT - set initial_capital
-      const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .update({
-          initial_capital: transaction.amount,
-          total_deposit: transaction.amount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', transaction.user_id)
-      
-      if (profileError) throw profileError
-    } else {
-      // TOP-UP - add to total_topup (TIDAK mengubah initial_capital)
-      const { error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .update({
-          total_topup: (profile.total_topup || 0) + transaction.amount,
-          total_deposit: (profile.total_deposit || 0) + transaction.amount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', transaction.user_id)
-      
-      if (profileError) throw profileError
-    }
-
-    // Credit wallet - TOP-UP hanya nambahin saldo, TIDAK dihitung untuk ROI
-    const { data: wallet } = await supabaseAdmin
-      .from('wallets')
-      .select('*')
-      .eq('user_id', transaction.user_id)
-      .eq('wallet_type', 'asset')
-      .single()
-
-    if (!wallet) throw new Error('Wallet not found')
-
-    const newBalance = (wallet.balance || 0) + transaction.amount
-
-    const { error: creditError } = await supabaseAdmin
-      .from('wallets')
-      .update({
-        balance: newBalance,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', wallet.id)
-
-    if (creditError) throw creditError
-
-    // NOTE: Sponsor bonus distribution is handled by /api/deposit/route.ts PUT endpoint
-    // DO NOT distribute bonus here to avoid duplication
+    await supabaseAdmin.from('admin_logs').insert({
+      action: 'legacy_deposit_approved',
+      target_user_id: legacyTransaction.user_id,
+      metadata: {
+        transaction_id: legacyTransaction.id,
+        amount,
+      },
+    })
 
     return NextResponse.json({
       success: true,
       message: 'Deposit approved successfully',
-      transaction: { ...transaction, status: 'success' },
     })
   } catch (error: any) {
     console.error('[Admin] Approve deposit error:', error.message)
-    return NextResponse.json(
-      { error: 'Failed to approve deposit' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: error.message || 'Failed to approve deposit' }, { status: 500 })
   } finally {
-    // Auto-generate and save network tree after deposit approval
     try {
       await generateAndSaveNetworkTree()
-    } catch (err) {
-      console.error('[Network Tree] Error saving network record:', err)
+    } catch (error) {
+      console.error('[Network Tree] Error saving network record:', error)
     }
   }
 }

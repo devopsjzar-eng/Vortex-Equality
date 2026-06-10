@@ -83,7 +83,7 @@ export default function DepositsPage() {
   }
 
   const handleReject = async (transactionId: string, memberName: string, amount: number) => {
-    if (!confirm(`Tolak deposit $${amount.toFixed(2)} dari ${memberName}? Record akan dihapus dan tidak muncul di riwayat member.`)) {
+    if (!confirm(`Reject deposit $${amount.toFixed(2)} from ${memberName}? The record will be deleted and removed from the member history.`)) {
       return
     }
     
@@ -263,7 +263,7 @@ export default function DepositsPage() {
                         disabled={rejecting === deposit.id || approving === deposit.id}
                         className="text-xs text-red-500 hover:text-red-400 transition-colors disabled:opacity-50"
                       >
-                        {rejecting === deposit.id ? 'Memproses...' : 'Tolak Deposit'}
+                        {rejecting === deposit.id ? 'Processing...' : 'Reject Deposit'}
                       </button>
                     </div>
                   </div>

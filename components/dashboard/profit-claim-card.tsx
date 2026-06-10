@@ -52,7 +52,7 @@ export function ProfitClaimCard({ userId, assetBalance = 0, boosterPercentage = 
         const [hours, minutes] = testTimeParam.split(':').map(Number)
         now = new Date()
         now.setHours(hours, minutes, 0, 0)
-        console.log('[v0] TEST MODE: Using time:', testTimeParam)
+        console.log('[Vortex] TEST MODE: Using time:', testTimeParam)
       }
       
       const hours = now.getHours()
@@ -334,14 +334,14 @@ export function ProfitClaimCard({ userId, assetBalance = 0, boosterPercentage = 
 
   // Available to claim
   return (
-    <Card className="border-slate-1000/30 bg-gradient-to-br from-slate-1000/5 to-blue-500/10">
+    <Card className="apple-matte-surface border-primary/25">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-lg">
           <span className="flex items-center gap-2">
-            <Gift className="h-5 w-5 text-slate-1000" />
+            <Gift className="h-5 w-5 text-primary" />
             Daily Profit Available
           </span>
-          <span className="flex items-center gap-1 rounded-full bg-slate-1000/10 px-3 py-1 text-sm font-normal text-slate-500">
+          <span className="flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-normal text-muted-foreground">
             <Clock className="h-3 w-3" />
             Expires in {timeInfo.timeLeft}
           </span>
@@ -368,7 +368,7 @@ export function ProfitClaimCard({ userId, assetBalance = 0, boosterPercentage = 
         <Button 
           onClick={handleClaim} 
           disabled={claiming || !timeInfo.isClaimTime}
-          className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700"
+          className="luxury-claim-button h-12 w-full text-base font-semibold hover:bg-primary/90"
           size="lg"
         >
           {claiming ? (
@@ -400,3 +400,4 @@ export function ProfitClaimCard({ userId, assetBalance = 0, boosterPercentage = 
     </Card>
   )
 }
+

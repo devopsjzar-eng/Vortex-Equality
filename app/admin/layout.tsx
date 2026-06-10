@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,7 @@ import {
   User,
   TrendingUp,
   Trash2,
+  Activity,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -34,6 +36,8 @@ const adminNavItems = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/members', label: 'Members', icon: Users },
   { href: '/admin/withdrawals', label: 'Withdrawals', icon: Wallet },
+  { href: '/admin/profit', label: 'Profit Control', icon: TrendingUp },
+  { href: '/admin/logs', label: 'Master Logs', icon: Activity },
   { href: '/admin/credit', label: 'Direct Credit', icon: ArrowDownToLine },
   { href: '/admin/member-cleanup', label: 'Record Cleanup', icon: Trash2 },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
@@ -71,9 +75,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // Get pending withdrawals count
     const fetchPendingCount = async () => {
       const { count } = await supabase
-        .from('transactions')
+        .from('financial_withdrawals')
         .select('*', { count: 'exact', head: true })
-        .eq('type', 'withdrawal')
         .eq('status', 'pending')
       setPendingCount(count || 0)
     }
@@ -96,14 +99,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             href={item.href}
             onClick={() => mobile && setSidebarOpen(false)}
             className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+              'flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               isActive
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             )}
           >
-            <item.icon className="h-5 w-5" />
-            {item.label}
+            <item.icon className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 truncate">{item.label}</span>
             {item.href === '/admin/withdrawals' && pendingCount > 0 && (
               <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground">
                 {pendingCount}
@@ -124,24 +127,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   )
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen w-full overflow-x-hidden bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden w-64 flex-col border-r border-border bg-card lg:flex">
-        <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-destructive text-destructive-foreground">
-            <Shield className="h-5 w-5" />
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
+        <div className="flex h-16 items-center gap-3 border-b border-border px-6">
+          <Image src="/logo.jpg" alt="Vortex Equality" width={40} height={40} className="rounded-lg" />
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate text-lg font-bold leading-tight text-sidebar-foreground">Vortex</span>
+            <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Admin</span>
           </div>
-          <span className="text-lg font-bold">Master Council</span>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           <NavLinks />
         </div>
         <div className="border-t border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-destructive/10">
-              <Shield className="h-5 w-5 text-destructive" />
+          <div className="apple-matte-control flex items-center gap-3 p-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15">
+              <Shield className="h-5 w-5 text-primary" />
             </div>
-            <div className="flex-1 overflow-hidden">
+            <div className="min-w-0 flex-1 overflow-hidden">
               <p className="truncate text-sm font-medium">{profile?.full_name || 'Admin'}</p>
               <p className="truncate text-xs text-muted-foreground">Administrator</p>
             </div>
@@ -150,9 +154,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <header className="flex h-16 items-center justify-between border-b border-border bg-card px-4 lg:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-sidebar/95 px-4 backdrop-blur lg:px-6">
           <div className="flex items-center gap-4">
             {/* Mobile Menu */}
             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -161,12 +165,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-64 p-0">
-                <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-destructive text-destructive-foreground">
-                    <Shield className="h-5 w-5" />
+              <SheetContent side="left" className="w-[min(18rem,calc(100vw-2rem))] border-border bg-sidebar p-0">
+                <div className="flex h-16 items-center gap-3 border-b border-border px-6">
+                  <Image src="/logo.jpg" alt="Vortex Equality" width={36} height={36} className="rounded-lg" />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-lg font-bold leading-tight">Vortex</span>
+                    <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Admin</span>
                   </div>
-                  <span className="text-lg font-bold">Master Council</span>
                 </div>
                 <div className="p-4">
                   <NavLinks mobile />
@@ -176,10 +181,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {/* Logo for mobile */}
             <div className="flex items-center gap-2 lg:hidden">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-destructive text-destructive-foreground">
-                <Shield className="h-4 w-4" />
-              </div>
-              <span className="font-bold">Admin</span>
+              <Image src="/logo.jpg" alt="Vortex Equality" width={32} height={32} className="rounded-lg" />
+              <span className="font-bold">Vortex Admin</span>
             </div>
           </div>
 
@@ -219,8 +222,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          {children}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-5 lg:p-6">
+          <div className="mx-auto w-full max-w-7xl">
+            {children}
+          </div>
         </main>
       </div>
     </div>

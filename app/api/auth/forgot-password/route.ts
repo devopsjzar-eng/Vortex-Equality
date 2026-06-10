@@ -60,10 +60,12 @@ export async function POST(request: NextRequest) {
         .from('password_reset_otps')
         .upsert({
           email: email.toLowerCase(),
+          otp: otpCode,
           otp_code: otpCode,
+          purpose: 'password_reset',
           expires_at: expiresAt.toISOString(),
           used: false
-        }, { onConflict: 'email' })
+        }, { onConflict: 'email,purpose' })
 
       // Send email with OTP
       if (resend) {
@@ -142,6 +144,7 @@ export async function POST(request: NextRequest) {
         .select('*')
         .eq('email', email.toLowerCase())
         .eq('otp_code', otp)
+        .eq('purpose', 'password_reset')
         .eq('used', false)
         .single()
 
@@ -176,6 +179,7 @@ export async function POST(request: NextRequest) {
         .select('*')
         .eq('email', email.toLowerCase())
         .eq('otp_code', otp)
+        .eq('purpose', 'password_reset')
         .eq('used', false)
         .single()
 
@@ -206,6 +210,7 @@ export async function POST(request: NextRequest) {
         .from('password_reset_otps')
         .update({ used: true })
         .eq('email', email.toLowerCase())
+        .eq('purpose', 'password_reset')
 
       // Also update Supabase Auth if using it
       try {

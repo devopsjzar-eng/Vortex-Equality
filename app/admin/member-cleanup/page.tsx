@@ -1,472 +1,378 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Spinner } from '@/components/ui/spinner'
-import { 
-  AlertTriangle, 
-  Search, 
-  Trash2, 
-  Eye,
-  Calendar,
-  Wallet,
-  TrendingUp,
-  History
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  AlertTriangle, Search, Trash2, Loader2,
+  ShieldAlert, CheckCircle, XCircle,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-interface MemberData {
+type MemberWallet = {
+  main_balance: number
+  active_deposit: number
+  network_bonus_balance: number
+  unclaimed_profit: number
+  total_claimed_profit: number
+  total_withdrawn: number
+  is_bep_reached: boolean
+  is_maxed_out: boolean
+}
+
+type MemberInfo = {
   id: string
   email: string
-  fullName: string
-  joinedAt: string
-  totalDeposit: number
-  wallets: {
-    asset: { balance: number; totalProfit: number }
-    bonus: { balance: number }
-  }
-  records: {
-    deposits: number
-    bonusTransactions: number
-    profitClaims: number
-  }
+  full_name: string | null
+  joined_at: string
+  wallet: MemberWallet | null
+  records: { deposits: number; profit_claims: number; withdrawals: number }
 }
 
-interface DeletionResult {
-  success: boolean
-  message: string
-  memberInfo: { id: string; email: string; fullName: string }
-  deletedSummary: any
-  auditLog: any
+type Action = {
+  key: string
+  label: string
+  description: string
+  needsAmount: boolean
+  field?: keyof MemberWallet
+  destructive?: boolean
 }
+
+const ACTIONS: Action[] = [
+  {
+    key: 'deduct_main',
+    label: 'Deduct Main Balance',
+    description: 'Remove funds from the member\'s main wallet (earned/claimed funds).',
+    needsAmount: true,
+    field: 'main_balance',
+  },
+  {
+    key: 'deduct_deposit',
+    label: 'Deduct Active Deposit',
+    description: 'Reduce the member\'s active deposit capital (reduces daily profit eligibility).',
+    needsAmount: true,
+    field: 'active_deposit',
+  },
+  {
+    key: 'deduct_bonus',
+    label: 'Deduct Network Bonus',
+    description: 'Remove funds from the member\'s referral/network bonus balance.',
+    needsAmount: true,
+    field: 'network_bonus_balance',
+  },
+  {
+    key: 'cancel_unclaimed',
+    label: 'Cancel Unclaimed Profit',
+    description: 'Zero out the member\'s pending unclaimed profit before they claim it.',
+    needsAmount: false,
+  },
+  {
+    key: 'delete_profit_claims',
+    label: 'Delete Profit Claim History',
+    description: 'Hard-delete all profit claims and reverse total_claimed_profit counter.',
+    needsAmount: false,
+  },
+  {
+    key: 'delete_deposits',
+    label: 'Delete Deposit Records',
+    description: 'Hard-delete all deposit records and their ledger entries.',
+    needsAmount: false,
+  },
+  {
+    key: 'nuke_all',
+    label: '☢ NUKE ALL — Reset to Zero',
+    description: 'IRREVERSIBLE: Zero all balances and delete all financial records for this member.',
+    needsAmount: false,
+    destructive: true,
+  },
+]
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
 
 export default function MemberCleanupPage() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [memberData, setMemberData] = useState<MemberData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [selectedRecordType, setSelectedRecordType] = useState<string>('deposits')
-  const [amountToReduce, setAmountToReduce] = useState<string>('')
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
-  const [deletionResult, setDeletionResult] = useState<DeletionResult | null>(null)
-  const supabase = createClient()
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount)
-  }
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
+  const [search, setSearch] = useState('')
+  const [member, setMember] = useState<MemberInfo | null>(null)
+  const [searching, setSearching] = useState(false)
+  const [selectedAction, setSelectedAction] = useState<Action | null>(null)
+  const [amount, setAmount] = useState('')
+  const [reason, setReason] = useState('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [processing, setProcessing] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      setError('Please enter an email or username')
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
-    setMemberData(null)
-
+    if (!search.trim()) return
+    setSearching(true)
+    setMember(null)
+    setMessage(null)
     try {
-      const response = await fetch(
-        `/api/admin/member/delete-records?search=${encodeURIComponent(searchQuery)}`
-      )
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to search member')
-        return
-      }
-
-      if (data.results && data.results.length > 0) {
-        setMemberData(data.results[0])
-      } else {
-        setError('Member not found')
-      }
-    } catch (err: any) {
-      setError(err.message || 'Search failed')
+      const res = await fetch(`/api/admin/member/adjust-balance?search=${encodeURIComponent(search)}`)
+      const data = await res.json()
+      if (!res.ok) { setMessage({ type: 'error', text: data.error }); return }
+      if (data.results?.length > 0) setMember(data.results[0])
+      else setMessage({ type: 'error', text: 'Member not found.' })
+    } catch {
+      setMessage({ type: 'error', text: 'Search failed.' })
     } finally {
-      setLoading(false)
+      setSearching(false)
     }
   }
 
-  const handleDeleteRecords = async () => {
-    if (!memberData) return
-
-    // Validate amount if reducing bonus/asset wallet
-    if ((selectedRecordType === 'bonus_wallet' || selectedRecordType === 'asset_wallet') && !amountToReduce) {
-      setError('Please enter the amount to reduce')
-      return
-    }
-
-    setDeleting(true)
-    setError(null)
-
+  const handleConfirm = async () => {
+    if (!member || !selectedAction) return
+    setProcessing(true)
+    setConfirmOpen(false)
     try {
-      const response = await fetch('/api/admin/member/delete-records', {
+      const res = await fetch('/api/admin/member/adjust-balance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: memberData.id,
-          recordType: selectedRecordType,
-          amountToRemove: selectedRecordType === 'bonus_wallet' || selectedRecordType === 'asset_wallet' 
-            ? parseFloat(amountToReduce) 
-            : 0,
-          adminNotes: `Admin manual deletion: ${selectedRecordType}`
-        })
+          userId: member.id,
+          action: selectedAction.key,
+          amount: selectedAction.needsAmount ? parseFloat(amount) : 0,
+          reason: reason || undefined,
+        }),
       })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || 'Deletion failed')
-        return
-      }
-
-      setDeletionResult(data)
-      setSuccess('Records deleted successfully!')
-      setDeleteConfirmOpen(false)
-      setMemberData(null)
-      setSearchQuery('')
-      setAmountToReduce('')
-    } catch (err: any) {
-      setError(err.message || 'Deletion failed')
+      const data = await res.json()
+      if (!res.ok) { setMessage({ type: 'error', text: data.error }); return }
+      setMessage({ type: 'success', text: `Done. Member: ${data.member}` })
+      setMember(null)
+      setSearch('')
+      setAmount('')
+      setReason('')
+      setSelectedAction(null)
+    } catch {
+      setMessage({ type: 'error', text: 'Request failed.' })
     } finally {
-      setDeleting(false)
+      setProcessing(false)
     }
   }
+
+  const canProceed = selectedAction &&
+    (!selectedAction.needsAmount || (parseFloat(amount) > 0))
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Member Record Cleanup</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Member Balance Control</h1>
         <p className="text-muted-foreground">
-          Search and delete member transaction history and balance records
+          Deduct balances, cancel profits, and scrub financial records in the live system.
         </p>
       </div>
 
-      {/* Search Section */}
+      {/* Alert */}
+      {message && (
+        <Card className={cn(
+          'border',
+          message.type === 'success' ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-red-500/40 bg-red-500/10'
+        )}>
+          <CardContent className="flex items-center gap-3 p-4">
+            {message.type === 'success'
+              ? <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
+              : <XCircle className="h-5 w-5 text-red-400 shrink-0" />}
+            <p className={cn('text-sm font-medium',
+              message.type === 'success' ? 'text-emerald-300' : 'text-red-300'
+            )}>
+              {message.text}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Search */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-4 w-4" />
-            Search Member
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Search className="h-4 w-4" /> Find Member
           </CardTitle>
-          <CardDescription>Enter email or username to find member records</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <div className="flex gap-2">
-            <div className="flex-1">
-              <Input
-                placeholder="Enter email or username..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              />
-            </div>
-            <Button onClick={handleSearch} disabled={loading || !searchQuery.trim()}>
-              {loading ? <Spinner className="h-4 w-4 mr-2" /> : <Search className="h-4 w-4 mr-2" />}
-              Search
+            <Input
+              placeholder="Email or full name..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            />
+            <Button onClick={handleSearch} disabled={searching || !search.trim()}>
+              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             </Button>
           </div>
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {success && (
-            <Alert className="border-success bg-success/10">
-              <AlertDescription className="text-success">{success}</AlertDescription>
-            </Alert>
-          )}
         </CardContent>
       </Card>
 
-      {/* Member Data Preview */}
-      {memberData && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Eye className="h-4 w-4" />
-              Member Preview
-            </CardTitle>
-            <CardDescription>Review member information before deletion</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Member Info */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-lg bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground">Email</p>
-                <p className="font-medium">{memberData.email}</p>
-              </div>
-              <div className="rounded-lg bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground">Full Name</p>
-                <p className="font-medium">{memberData.fullName || 'N/A'}</p>
-              </div>
-              <div className="rounded-lg bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground">Joined</p>
-                <p className="font-medium">{formatDate(memberData.joinedAt)}</p>
-              </div>
-              <div className="rounded-lg bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground">Total Deposit</p>
-                <p className="font-medium">{formatCurrency(memberData.totalDeposit)}</p>
-              </div>
-            </div>
-
-            {/* Wallet Balances */}
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Wallet className="h-4 w-4" />
-                Current Balances
-              </h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg border border-border p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">Asset Wallet</p>
-                    <Wallet className="h-4 w-4 text-primary" />
-                  </div>
-                  <p className="mt-2 text-2xl font-bold">
-                    {formatCurrency(memberData.wallets.asset.balance)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Total Profit Earned: {formatCurrency(memberData.wallets.asset.totalProfit)}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">Bonus Wallet</p>
-                    <TrendingUp className="h-4 w-4 text-success" />
-                  </div>
-                  <p className="mt-2 text-2xl font-bold">
-                    {formatCurrency(memberData.wallets.bonus.balance)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    From referrals & bonuses
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Transaction Records */}
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <History className="h-4 w-4" />
-                Transaction Records
-              </h3>
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-lg bg-muted/50 p-4">
-                  <p className="text-sm text-muted-foreground">Deposit Records</p>
-                  <p className="text-2xl font-bold">{memberData.records.deposits}</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-4">
-                  <p className="text-sm text-muted-foreground">Bonus Transactions</p>
-                  <p className="text-2xl font-bold">{memberData.records.bonusTransactions}</p>
-                </div>
-                <div className="rounded-lg bg-muted/50 p-4">
-                  <p className="text-sm text-muted-foreground">Profit Claims</p>
-                  <p className="text-2xl font-bold">{memberData.records.profitClaims}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Delete Options */}
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Trash2 className="h-4 w-4 text-destructive" />
-                Delete Options
-              </h3>
-
-              <Alert variant="destructive" className="mb-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Deleted records cannot be recovered. This action is permanent and will be logged.
-                </AlertDescription>
-              </Alert>
-
-              <Tabs value={selectedRecordType} onValueChange={setSelectedRecordType} className="space-y-4">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="deposits">Deposits</TabsTrigger>
-                  <TabsTrigger value="bonus_wallet">Reduce Bonus</TabsTrigger>
-                  <TabsTrigger value="asset_wallet">Reduce Asset</TabsTrigger>
-                  <TabsTrigger value="all">All</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="deposits">
-                  <div className="space-y-2">
-                    <p className="text-sm">Delete all deposit records and adjust asset wallet accordingly</p>
-                    <p className="text-xs text-muted-foreground">
-                      This will remove {memberData.records.deposits} deposit records
-                    </p>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="bonus_wallet">
-                  <div className="space-y-4">
-                    <p className="text-sm">Reduce bonus wallet by amount and remove matching transactions</p>
-                    <p className="text-xs text-muted-foreground">
-                      Current balance: {formatCurrency(memberData.wallets.bonus.balance)}
-                    </p>
-                    <div className="space-y-2">
-                      <Label>Amount to Reduce</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="number"
-                          placeholder="0.00"
-                          value={amountToReduce}
-                          onChange={(e) => setAmountToReduce(e.target.value)}
-                          min="0"
-                          step="0.01"
-                        />
-                        <div className="rounded-lg bg-muted/50 p-3 flex-1">
-                          <p className="text-xs text-muted-foreground">After:</p>
-                          <p className="font-bold">
-                            {formatCurrency(Math.max(0, memberData.wallets.bonus.balance - (parseFloat(amountToReduce) || 0)))}
-                          </p>
-                        </div>
-                      </div>
+      {/* Member Preview */}
+      {member && (
+        <>
+          <Card className="border-amber-500/20">
+            <CardHeader>
+              <CardTitle className="text-base">{member.email}</CardTitle>
+              <CardDescription>{member.full_name} · Joined {new Date(member.joined_at).toLocaleDateString()}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {member.wallet ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {[
+                    { label: 'Main Balance', value: member.wallet.main_balance },
+                    { label: 'Active Deposit', value: member.wallet.active_deposit },
+                    { label: 'Network Bonus', value: member.wallet.network_bonus_balance },
+                    { label: 'Unclaimed Profit', value: member.wallet.unclaimed_profit },
+                    { label: 'Total Claimed', value: member.wallet.total_claimed_profit },
+                    { label: 'Total Withdrawn', value: member.wallet.total_withdrawn },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">{label}</p>
+                      <p className="mt-1 font-bold">{fmt(value)}</p>
                     </div>
-                  </div>
-                </TabsContent>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No financial wallet found for this member.</p>
+              )}
 
-                <TabsContent value="asset_wallet">
-                  <div className="space-y-4">
-                    <p className="text-sm">Reduce asset wallet by amount and remove matching transactions</p>
-                    <p className="text-xs text-muted-foreground">
-                      Current balance: {formatCurrency(memberData.wallets.asset.balance)}
+              <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+                <span>{member.records.deposits} deposits</span>
+                <span>{member.records.profit_claims} profit claims</span>
+                <span>{member.records.withdrawals} withdrawals</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Action Selector */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ShieldAlert className="h-4 w-4 text-destructive" />
+                Select Action
+              </CardTitle>
+              <CardDescription>All actions are permanent and logged to admin audit trail.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-2">
+                {ACTIONS.map(action => (
+                  <button
+                    key={action.key}
+                    onClick={() => { setSelectedAction(action); setAmount('') }}
+                    className={cn(
+                      'w-full rounded-lg border p-3 text-left transition-colors',
+                      selectedAction?.key === action.key
+                        ? action.destructive
+                          ? 'border-red-500 bg-red-500/10'
+                          : 'border-primary bg-primary/10'
+                        : 'border-border hover:border-muted-foreground/40 hover:bg-muted/30',
+                      action.destructive && 'border-red-500/30'
+                    )}
+                  >
+                    <p className={cn(
+                      'text-sm font-medium',
+                      action.destructive && 'text-red-400'
+                    )}>
+                      {action.label}
                     </p>
-                    <div className="space-y-2">
-                      <Label>Amount to Reduce</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="number"
-                          placeholder="0.00"
-                          value={amountToReduce}
-                          onChange={(e) => setAmountToReduce(e.target.value)}
-                          min="0"
-                          step="0.01"
-                        />
-                        <div className="rounded-lg bg-muted/50 p-3 flex-1">
-                          <p className="text-xs text-muted-foreground">After:</p>
-                          <p className="font-bold">
-                            {formatCurrency(Math.max(0, memberData.wallets.asset.balance - (parseFloat(amountToReduce) || 0)))}
-                          </p>
-                        </div>
-                      </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{action.description}</p>
+                  </button>
+                ))}
+              </div>
+
+              {/* Amount input for actions that need it */}
+              {selectedAction?.needsAmount && (
+                <div className="space-y-2 pt-2">
+                  <Label>
+                    Amount to deduct from{' '}
+                    <span className="text-primary">
+                      {fmt(member.wallet?.[selectedAction.field!] as number ?? 0)}
+                    </span>
+                  </Label>
+                  <div className="flex gap-2 items-center">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        type="number"
+                        placeholder="0.00"
+                        value={amount}
+                        onChange={e => setAmount(e.target.value)}
+                        min="0.01"
+                        step="0.01"
+                        className="pl-7"
+                      />
                     </div>
+                    {amount && parseFloat(amount) > 0 && selectedAction.field && member.wallet && (
+                      <div className="rounded border border-border px-3 py-2 text-sm">
+                        New: <span className="font-bold text-amber-400">
+                          {fmt(Math.max(0, Number(member.wallet[selectedAction.field]) - parseFloat(amount)))}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </TabsContent>
+                </div>
+              )}
 
-                <TabsContent value="all">
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-destructive">NUCLEAR OPTION</p>
-                    <p className="text-sm">Delete ALL records and set all wallets to $0</p>
-                    <p className="text-xs text-muted-foreground">
-                      This will:
-                    </p>
-                    <ul className="text-xs text-muted-foreground list-disc list-inside space-y-1 mt-2">
-                      <li>Delete {memberData.records.deposits} deposit records</li>
-                      <li>Clear bonus wallet ({formatCurrency(memberData.wallets.bonus.balance)}) to $0</li>
-                      <li>Clear asset wallet ({formatCurrency(memberData.wallets.asset.balance)}) to $0</li>
-                      <li>Delete {memberData.records.profitClaims} profit claims</li>
-                    </ul>
-                  </div>
-                </TabsContent>
-              </Tabs>
+              {/* Reason */}
+              {selectedAction && (
+                <div className="space-y-2 pt-1">
+                  <Label>Reason (optional, for audit log)</Label>
+                  <Input
+                    placeholder="e.g. Cheating detected, duplicate account..."
+                    value={reason}
+                    onChange={e => setReason(e.target.value)}
+                  />
+                </div>
+              )}
 
               <Button
-                onClick={() => setDeleteConfirmOpen(true)}
                 variant="destructive"
-                className="w-full mt-4"
-                disabled={deleting}
+                className="w-full mt-2"
+                disabled={!canProceed || processing}
+                onClick={() => setConfirmOpen(true)}
               >
-                {deleting ? <Spinner className="h-4 w-4 mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-                {deleting ? 'Deleting...' : `Delete ${selectedRecordType === 'all' ? 'Everything' : selectedRecordType}`}
+                {processing
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
+                  : <><Trash2 className="mr-2 h-4 w-4" /> Execute: {selectedAction?.label || 'Select action'}</>}
               </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </>
       )}
 
-      {/* Deletion Result */}
-      {deletionResult && (
-        <Card className="border-success bg-success/5">
-          <CardHeader>
-            <CardTitle className="text-success">Deletion Complete</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-sm">
-              <p className="font-medium">Member: {deletionResult.memberInfo.email}</p>
-              <p className="text-muted-foreground">{deletionResult.message}</p>
-            </div>
-
-            {deletionResult.deletedSummary.deposits && (
-              <div className="rounded-lg bg-muted/50 p-3">
-                <p className="font-medium text-sm">Deposits Deleted</p>
-                <p className="text-sm text-muted-foreground">
-                  Count: {deletionResult.deletedSummary.deposits.count} | 
-                  Amount: {formatCurrency(deletionResult.deletedSummary.deposits.totalAmount)}
-                </p>
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Confirm Irreversible Action
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>You are about to execute:</p>
+                <p className="font-semibold text-foreground">{selectedAction?.label}</p>
+                <p>on member: <span className="font-semibold text-foreground">{member?.email}</span></p>
+                {selectedAction?.needsAmount && amount && (
+                  <p>Amount: <span className="font-semibold text-destructive">{fmt(parseFloat(amount))}</span></p>
+                )}
+                <p className="text-destructive font-medium">This cannot be undone. Continue?</p>
               </div>
-            )}
-
-            {deletionResult.deletedSummary.bonusWallet && (
-              <div className="rounded-lg bg-muted/50 p-3">
-                <p className="font-medium text-sm">Bonus Wallet</p>
-                <p className="text-sm text-muted-foreground">
-                  Previous: {formatCurrency(deletionResult.deletedSummary.bonusWallet.previousBalance)} → 
-                  New: {formatCurrency(deletionResult.deletedSummary.bonusWallet.newBalance)}
-                </p>
-              </div>
-            )}
-
-            {deletionResult.deletedSummary.assetWallet && (
-              <div className="rounded-lg bg-muted/50 p-3">
-                <p className="font-medium text-sm">Asset Wallet</p>
-                <p className="text-sm text-muted-foreground">
-                  Previous: {formatCurrency(deletionResult.deletedSummary.assetWallet.previousBalance)} → 
-                  New: {formatCurrency(deletionResult.deletedSummary.assetWallet.newBalance)}
-                </p>
-              </div>
-            )}
-
-            {deletionResult.deletedSummary.dailyProfit && (
-              <div className="rounded-lg bg-muted/50 p-3">
-                <p className="font-medium text-sm">Daily Profit Deleted</p>
-                <p className="text-sm text-muted-foreground">
-                  Count: {deletionResult.deletedSummary.dailyProfit.count} | 
-                  Amount: {formatCurrency(deletionResult.deletedSummary.dailyProfit.totalAmount)}
-                </p>
-              </div>
-            )}
-
-            <div className="rounded-lg bg-muted/50 p-3 text-xs">
-              <p className="font-medium">Audit Log Timestamp</p>
-              <p className="text-muted-foreground">{deletionResult.auditLog.timestamp}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Yes, Execute
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 
 // Create Supabase Admin client (lazy initialization)
 function getSupabaseAdmin() {
@@ -18,12 +19,21 @@ function getSupabaseAdmin() {
 export async function POST(request: NextRequest) {
   try {
     const supabaseAdmin = getSupabaseAdmin()
-    const { email, password, fullName, referralCode } = await request.json()
+    const { email, password, fullName, username, referralCode, withdrawalPin } = await request.json()
+    const normalizedEmail = String(email || '').trim().toLowerCase()
+    const normalizedUsername = String(username || '').trim().toLowerCase()
 
     // Validate input
-    if (!email || !password || !fullName) {
+    if (!normalizedEmail || !password || !fullName || !normalizedUsername || !withdrawalPin) {
       return NextResponse.json(
-        { error: 'Email, password, and full name are required' },
+        { error: 'Email, username, password, full name, and withdrawal PIN are required' },
+        { status: 400 }
+      )
+    }
+
+    if (!/^[a-z0-9_]{3,24}$/.test(normalizedUsername)) {
+      return NextResponse.json(
+        { error: 'Username must be 3-24 characters using letters, numbers, or underscores only' },
         { status: 400 }
       )
     }
@@ -35,12 +45,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!/^\d{6}$/.test(String(withdrawalPin))) {
+      return NextResponse.json(
+        { error: 'Withdrawal PIN must be exactly 6 digits' },
+        { status: 400 }
+      )
+    }
+
     // Check if user already exists
     const { data: existingUser } = await supabaseAdmin
       .from('profiles')
       .select('id')
-      .eq('email', email.toLowerCase())
-      .single()
+      .eq('email', normalizedEmail)
+      .maybeSingle()
 
     if (existingUser) {
       return NextResponse.json(
@@ -49,13 +66,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const { data: existingUsername } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('username', normalizedUsername)
+      .maybeSingle()
+
+    if (existingUsername) {
+      return NextResponse.json(
+        { error: 'Username is already taken. Please choose another username.' },
+        { status: 400 }
+      )
+    }
+
+    let referrerId: string | null = null
+
     // Validate referral code exists if provided
     if (referralCode) {
-      const { data: referrer } = await supabaseAdmin
+      const lockedSponsor = String(referralCode).trim()
+      const { data: referrerByCode } = await supabaseAdmin
         .from('profiles')
         .select('id')
-        .eq('referral_code', referralCode)
-        .single()
+        .eq('referral_code', lockedSponsor)
+        .maybeSingle()
+
+      const { data: referrerByUsername } = referrerByCode
+        ? { data: null }
+        : await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('username', lockedSponsor.toLowerCase())
+            .maybeSingle()
+
+      const referrer = referrerByCode || referrerByUsername
       
       if (!referrer) {
         return NextResponse.json(
@@ -63,15 +106,18 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
+
+      referrerId = referrer.id
     }
 
     // Create user with admin API - this bypasses email confirmation
     const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       password,
       email_confirm: true,
       user_metadata: {
         full_name: fullName,
+        username: normalizedUsername,
         referred_by: referralCode,
         phone: '',
       },
@@ -92,10 +138,71 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const referralPrefix = normalizedUsername.replace(/[^a-z0-9]/g, '').slice(0, 10).toUpperCase() || 'VX'
+    const referralSuffix = authData.user.id.replace(/-/g, '').slice(0, 6).toUpperCase()
+    const generatedReferralCode = `${referralPrefix}${referralSuffix}`
+    const passwordHash = await bcrypt.hash(password, 12)
+
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: authData.user.id,
+        email: normalizedEmail,
+        username: normalizedUsername,
+        full_name: String(fullName).trim(),
+        referral_code: generatedReferralCode,
+        referred_by: referrerId,
+        rank: 'Bronze',
+        password_hash: passwordHash,
+      })
+
+    if (profileError) {
+      console.error('Error creating profile:', profileError)
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+      return NextResponse.json(
+        { error: profileError.message || 'Failed to create profile' },
+        { status: 400 }
+      )
+    }
+
+    await supabaseAdmin
+      .from('wallets')
+      .upsert([
+        { user_id: authData.user.id, wallet_type: 'asset' },
+        { user_id: authData.user.id, wallet_type: 'bonus' },
+      ], { onConflict: 'user_id,wallet_type' })
+
+    await supabaseAdmin
+      .from('referral_edges')
+      .upsert({
+        user_id: authData.user.id,
+        sponsor_id: referrerId,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+
+    await supabaseAdmin.rpc('ensure_financial_wallet', {
+      p_user_id: authData.user.id,
+    })
+
+    const { error: pinError } = await supabaseAdmin.rpc('set_withdrawal_pin_hash', {
+      p_user_id: authData.user.id,
+      p_pin: String(withdrawalPin),
+    })
+
+    if (pinError) {
+      console.error('Error setting withdrawal PIN:', pinError)
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+      return NextResponse.json(
+        { error: pinError.message || 'Failed to set withdrawal PIN' },
+        { status: 400 }
+      )
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Account created successfully. You can now login.',
       userId: authData.user.id,
+      referralCode: generatedReferralCode,
     })
 
   } catch (error) {
