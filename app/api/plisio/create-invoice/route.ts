@@ -100,10 +100,18 @@ export async function POST(request: NextRequest) {
 
     if (!invoiceResponse.ok || invoiceData.status !== 'success') {
       console.error('[Plisio] Create invoice error:', invoiceData)
-      return NextResponse.json(
-        { error: invoiceData.message || invoiceData.error || 'Failed to create Plisio invoice' },
-        { status: 400 }
-      )
+      const plisioMsg = invoiceData.data?.message || invoiceData.message || invoiceData.error
+      let userMsg = 'Failed to create payment invoice. Please try again.'
+      if (typeof plisioMsg === 'string') {
+        try {
+          const parsed = JSON.parse(plisioMsg)
+          const firstVal = Object.values(parsed)[0]
+          if (typeof firstVal === 'string') userMsg = firstVal
+        } catch {
+          userMsg = plisioMsg
+        }
+      }
+      return NextResponse.json({ error: userMsg }, { status: 400 })
     }
 
     const invoice = invoiceData.data || {}
