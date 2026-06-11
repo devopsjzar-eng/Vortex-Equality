@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
 import bcrypt from 'bcryptjs'
+import { sendOTPEmail } from '@/lib/email'
 
-// Lazy initialization to avoid build-time errors
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -11,10 +10,6 @@ function getSupabaseAdmin() {
     throw new Error('Supabase credentials not configured')
   }
   return createClient(url, key)
-}
-
-function getResend() {
-  return process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 }
 
 // Generate 6-digit OTP
@@ -25,8 +20,6 @@ function generateOTP(): string {
 export async function POST(request: NextRequest) {
   try {
     const supabaseAdmin = getSupabaseAdmin()
-    const resend = getResend()
-    
     const body = await request.json()
     const { email, otp, newPassword, action } = body
 
@@ -67,64 +60,10 @@ export async function POST(request: NextRequest) {
           used: false
         }, { onConflict: 'email,purpose' })
 
-      // Send email with OTP
-      if (resend) {
-        try {
-          await resend.emails.send({
-            from: 'Vortex Equality <noreply@vortex-equality.com>',
-            to: email,
-            subject: 'Password Reset OTP - Vortex Equality',
-            html: `
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              </head>
-              <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-                  <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); border-radius: 16px 16px 0 0; padding: 32px; text-align: center;">
-                    <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">Vortex Equality</h1>
-                    <p style="color: #93c5fd; margin: 8px 0 0 0; font-size: 14px;">Premium Trading Investment Platform</p>
-                  </div>
-                  
-                  <div style="background: white; padding: 40px 32px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                    <h2 style="color: #1e293b; margin: 0 0 16px 0; font-size: 24px;">Password Reset Request</h2>
-                    <p style="color: #64748b; margin: 0 0 24px 0; line-height: 1.6;">
-                      Hello ${user.full_name || 'there'},<br><br>
-                      You have requested to reset your password. Use the OTP code below to proceed:
-                    </p>
-                    
-                    <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
-                      <p style="color: rgba(255,255,255,0.8); margin: 0 0 8px 0; font-size: 14px;">Your OTP Code</p>
-                      <p style="color: white; margin: 0; font-size: 40px; font-weight: 700; letter-spacing: 8px; font-family: monospace;">${otpCode}</p>
-                    </div>
-                    
-                    <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin: 24px 0;">
-                      <p style="color: #92400e; margin: 0; font-size: 14px;">
-                        <strong>Important:</strong> This code will expire in 15 minutes. Do not share this code with anyone.
-                      </p>
-                    </div>
-                    
-                    <p style="color: #64748b; margin: 24px 0 0 0; font-size: 14px; line-height: 1.6;">
-                      If you did not request this password reset, please ignore this email or contact support if you have concerns.
-                    </p>
-                  </div>
-                  
-                  <div style="text-align: center; padding: 24px;">
-                    <p style="color: #94a3b8; margin: 0; font-size: 12px;">
-                      This is an automated email from Vortex Equality.<br>
-                      Please do not reply to this email.
-                    </p>
-                  </div>
-                </div>
-              </body>
-              </html>
-            `
-          })
-        } catch (emailError) {
-          console.error('Failed to send email:', emailError)
-        }
+      const emailResult = await sendOTPEmail(email, otpCode)
+      if (!emailResult.success) {
+        console.error('[ForgotPassword] Email failed:', emailResult.error)
+        return NextResponse.json({ error: 'Failed to send OTP email. Please try again.' }, { status: 500 })
       }
 
       return NextResponse.json({ 

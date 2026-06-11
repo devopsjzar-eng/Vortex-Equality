@@ -14,10 +14,6 @@ function getSupabaseAdmin() {
   return createClient(url, key)
 }
 
-function getMinimumDepositUsd() {
-  return Number(process.env.NEXT_PUBLIC_MIN_DEPOSIT_USD || process.env.MIN_DEPOSIT_USD || 50)
-}
-
 async function parseCallbackPayload(request: NextRequest) {
   const contentType = request.headers.get('content-type') || ''
 
@@ -141,11 +137,6 @@ export async function POST(request: NextRequest) {
     const amount = Number(existingOrder.expected_amount || sourceAmount)
     if (!Number.isFinite(amount) || amount <= 0) {
       return NextResponse.json({ error: 'Invalid payment amount' }, { status: 400 })
-    }
-
-    const minimumDeposit = getMinimumDepositUsd()
-    if (amount < minimumDeposit && cryptoStatus === 'confirmed') {
-      return NextResponse.json({ error: `Deposit amount below minimum $${minimumDeposit}. Received: $${amount}` }, { status: 400 })
     }
 
     if (existingOrder.status === 'confirmed') {

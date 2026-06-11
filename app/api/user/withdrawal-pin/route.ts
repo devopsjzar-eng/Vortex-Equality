@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import { sendWithdrawalPinOTPEmail } from '@/lib/email'
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -18,26 +18,6 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
-async function sendPinOtp(email: string, otpCode: string) {
-  if (!process.env.RESEND_API_KEY) return
-
-  const resend = new Resend(process.env.RESEND_API_KEY)
-  await resend.emails.send({
-    from: 'Vortex Equality <noreply@vortex-equality.com>',
-    to: email,
-    subject: 'Withdrawal PIN OTP - Vortex Equality',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
-        <h2 style="color:#111827;">Withdrawal PIN Verification</h2>
-        <p style="color:#4b5563;">Use this OTP to reset or change your 6-digit withdrawal PIN.</p>
-        <div style="margin:24px 0; padding:20px; border-radius:12px; background:#111827; color:white; text-align:center; font-size:32px; letter-spacing:8px; font-weight:700;">
-          ${otpCode}
-        </div>
-        <p style="color:#6b7280; font-size:14px;">This code expires in 15 minutes. Do not share it with anyone.</p>
-      </div>
-    `,
-  })
-}
 
 export async function GET() {
   try {
@@ -93,10 +73,10 @@ export async function POST(request: NextRequest) {
           used: false,
         }, { onConflict: 'email,purpose' })
 
-      try {
-        await sendPinOtp(email, otpCode)
-      } catch (emailError) {
-        console.error('Failed to send PIN OTP:', emailError)
+      const emailResult = await sendWithdrawalPinOTPEmail(email, otpCode)
+      if (!emailResult.success) {
+        console.error('[WithdrawalPin] Email failed:', emailResult.error)
+        return NextResponse.json({ error: 'Failed to send OTP email. Please try again.' }, { status: 500 })
       }
 
       return NextResponse.json({
