@@ -27,22 +27,24 @@ export async function GET(request: Request) {
 
     const supabaseAdmin = getSupabaseAdmin()
 
-    let query = supabaseAdmin.from('profiles').select('*')
+    let query = supabaseAdmin.from('profiles').select('*').limit(1)
 
     if (email) {
-      query = query.eq('email', email)
+      query = query.ilike('email', email.trim())
     } else if (username) {
-      query = query.eq('username', username)
+      query = query.ilike('username', username.trim())
     }
 
-    const { data, error } = await query.single()
+    const { data: rows, error } = await query
 
-    if (error || !data) {
+    if (error || !rows || rows.length === 0) {
       return NextResponse.json(
-        { error: 'Member not found' },
+        { success: false, error: 'Member not found' },
         { status: 404 }
       )
     }
+
+    const data = rows[0]
 
     return NextResponse.json({
       success: true,

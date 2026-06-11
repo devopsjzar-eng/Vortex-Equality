@@ -5,6 +5,7 @@ import { BadgeCheck, ChevronDown, ChevronRight, Copy, Loader2, Search, Share2, T
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { QRCodeSVG } from 'qrcode.react'
 
 type TreeNode = {
   user_id: string
@@ -271,6 +272,14 @@ export function GenealogyTreeView() {
               {copied ? 'Copied' : 'Copy Link'}
             </Button>
           </div>
+          {referralLink && (
+            <div className="mt-4 flex flex-col items-center gap-2 border-t border-border pt-4">
+              <p className="text-sm font-medium text-muted-foreground">Scan to Join</p>
+              <div className="rounded-xl bg-white p-3">
+                <QRCodeSVG value={referralLink} size={160} />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

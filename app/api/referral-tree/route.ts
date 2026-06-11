@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -25,7 +26,8 @@ export async function GET() {
     const rows = tree || []
     const userIds = Array.from(new Set([user.id, ...rows.map((row: any) => row.user_id).filter(Boolean)]))
 
-    const { data: profiles } = await supabase
+    const adminClient = getSupabaseAdmin()
+    const { data: profiles } = await adminClient
       .from('profiles')
       .select('id, full_name, email, username, referral_code, rank')
       .in('id', userIds)
@@ -37,7 +39,7 @@ export async function GET() {
       const profile = profileById.get(row.user_id) || {}
       return {
         ...row,
-        full_name: profile.full_name || 'Member',
+        full_name: profile.full_name || (profile.email ? profile.email.split('@')[0] : 'Member'),
         email: profile.email || null,
         username: profile.username || null,
         rank: profile.rank || 'Starter',

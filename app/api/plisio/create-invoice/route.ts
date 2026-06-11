@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     const orderNumber = `VX-${user.id.replace(/-/g, '').slice(0, 12)}-${Date.now()}`
     const callbackBaseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
-    const callbackUrl = `${callbackBaseUrl}/api/plisio/callback?json=true`
+    const callbackUrl = `${callbackBaseUrl}/api/plisio/callback`
 
     const params = new URLSearchParams({
       source_currency: 'USD',

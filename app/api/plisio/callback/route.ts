@@ -94,6 +94,10 @@ async function notifyAdmin(userId: string, amount: number, currency: string | nu
   ).catch((error) => console.error('[Plisio] Email notification failed:', error))
 }
 
+export async function GET() {
+  return NextResponse.json({ success: true })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const secretKey = process.env.PLISIO_SECRET_KEY

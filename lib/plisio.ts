@@ -39,12 +39,19 @@ function phpSerializeValue(value: unknown): string {
     return `a:${value.length}:{${value.map((item, index) => `i:${index};${phpSerializeValue(item)}`).join('')}}`
   }
 
-  if (value && typeof value === 'object') {
+  if (value !== null && typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))
     return `a:${entries.length}:{${entries.map(([key, item]) => `${phpSerializeString(key)}${phpSerializeValue(item)}`).join('')}}`
   }
 
-  return phpSerializeString(String(value ?? ''))
+  if (typeof value === 'number') {
+    return Number.isInteger(value) ? `i:${value};` : `d:${value};`
+  }
+
+  if (typeof value === 'boolean') return `b:${value ? 1 : 0};`
+  if (value === null || value === undefined) return 'N;'
+
+  return phpSerializeString(String(value))
 }
 
 function decodeHtmlEntities(value: string) {
@@ -65,15 +72,13 @@ export function verifyPlisioCallback(payload: Record<string, unknown>, secretKey
     .sort()
     .reduce((acc, key) => {
       const value = payload[key]
+      // Preserve original type so phpSerializeValue can match PHP's serialize() exactly.
+      // Exception: tx_urls needs HTML entity decoding.
       acc[key] = key === 'tx_urls' && typeof value === 'string'
         ? decodeHtmlEntities(value)
-        : String(value ?? '')
+        : value
       return acc
     }, {} as Record<string, unknown>)
-
-  if (normalized.expire_utc !== undefined) {
-    normalized.expire_utc = String(normalized.expire_utc)
-  }
 
   const serialized = phpSerializeValue(normalized)
   const checkHash = crypto
