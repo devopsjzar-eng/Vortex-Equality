@@ -18,7 +18,7 @@ function getSupabaseAdmin() {
   return createSupabaseAdminClient(url, key)
 }
 
-async function checkSupabaseAdminAccess(admin: ReturnType<typeof createSupabaseAdminClient>) {
+async function checkSupabaseAdminAccess(admin: ReturnType<typeof getSupabaseAdmin>) {
   const { error } = await admin
     .from('crypto_deposit_orders')
     .select('id')
@@ -91,12 +91,29 @@ export async function POST(request: NextRequest) {
       api_key: secretKey,
     })
 
-    const invoiceResponse = await fetch(`${PLISIO_API_URL}/invoices/new?${params.toString()}`, {
+    const fullUrl = `${PLISIO_API_URL}/invoices/new?${params.toString()}`
+    console.log('[Plisio] Calling API URL (base):', PLISIO_API_URL)
+
+    const invoiceResponse = await fetch(fullUrl, {
       method: 'GET',
       headers: { Accept: 'application/json' },
     })
 
-    const invoiceData = await invoiceResponse.json()
+    // Read text first so we can log it if JSON parsing fails
+    const responseText = await invoiceResponse.text()
+    console.log('[Plisio] API response status:', invoiceResponse.status)
+    console.log('[Plisio] API response (first 300):', responseText.slice(0, 300))
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let invoiceData: any
+    try {
+      invoiceData = JSON.parse(responseText)
+    } catch {
+      console.error('[Plisio] Non-JSON response from Plisio API — likely wrong API URL or gateway down')
+      return NextResponse.json({
+        error: `Payment gateway returned an invalid response (HTTP ${invoiceResponse.status}). Check Plisio API URL and API key in Vercel settings.`,
+      }, { status: 502 })
+    }
 
     if (!invoiceResponse.ok || invoiceData.status !== 'success') {
       console.error('[Plisio] Create invoice error:', invoiceData)
