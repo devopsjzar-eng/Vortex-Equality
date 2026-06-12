@@ -45,12 +45,16 @@ export default function MembersPage() {
   const supabase = createClient()
 
   const fetchMembers = useCallback(async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select(`*, wallets(*), financial_wallets(active_deposit, network_bonus_balance)`)
-      .eq('is_admin', false)
-      .order('created_at', { ascending: false })
+    const [profilesResult, balancesResult] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select(`*, wallets(*)`)
+        .eq('is_admin', false)
+        .order('created_at', { ascending: false }),
+      fetch('/api/admin/member/balances').then(r => r.json()).catch(() => ({ balances: [] })),
+    ])
 
+    const { data } = profilesResult
     if (data) {
       const ids = data.map(member => member.id)
       const { data: statuses } = await supabase
@@ -59,9 +63,14 @@ export default function MembersPage() {
         .in('user_id', ids)
 
       const statusByUser = new Map((statuses || []).map(s => [s.user_id, s.is_banned]))
+      const balanceByUser = new Map(
+        (balancesResult.balances || []).map((b: { user_id: string; active_deposit: number; network_bonus_balance: number }) => [b.user_id, b])
+      )
+
       setMembers(data.map(member => ({
         ...member,
         is_banned: statusByUser.get(member.id) || false,
+        financial_wallets: balanceByUser.has(member.id) ? [balanceByUser.get(member.id)] : [],
       })) as MemberWithWallets[])
     }
     setLoading(false)
