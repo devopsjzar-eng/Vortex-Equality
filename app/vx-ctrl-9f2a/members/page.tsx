@@ -25,6 +25,7 @@ import {
 
 type MemberWithWallets = Profile & {
   wallets: MemberWallet[]
+  financial_wallets: { active_deposit: number; network_bonus_balance: number }[]
   is_banned?: boolean
 }
 
@@ -46,7 +47,7 @@ export default function MembersPage() {
   const fetchMembers = useCallback(async () => {
     const { data } = await supabase
       .from('profiles')
-      .select(`*, wallets(*)`)
+      .select(`*, wallets(*), financial_wallets(active_deposit, network_bonus_balance)`)
       .eq('is_admin', false)
       .order('created_at', { ascending: false })
 
@@ -140,8 +141,8 @@ export default function MembersPage() {
     const profilesSub = supabase.channel('profiles-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'is_admin=eq.false' }, fetchMembers)
       .subscribe()
-    const walletsSub = supabase.channel('wallets-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'wallets' }, fetchMembers)
+    const walletsSub = supabase.channel('financial-wallets-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_wallets' }, fetchMembers)
       .subscribe()
     return () => {
       profilesSub.unsubscribe()
@@ -215,8 +216,9 @@ export default function MembersPage() {
               </TableHeader>
               <TableBody>
                 {filteredMembers.map((member) => {
-                  const assetWallet = member.wallets.find(w => w.wallet_type === 'asset')
-                  const bonusWallet = member.wallets.find(w => w.wallet_type === 'bonus')
+                  const fw = member.financial_wallets?.[0]
+                  const assetBalance = Number(fw?.active_deposit || 0)
+                  const bonusBalance = Number(fw?.network_bonus_balance || 0)
                   const uplineProfile = member.referred_by
                     ? members.find(m => m.id === member.referred_by)
                     : null
@@ -248,8 +250,8 @@ export default function MembersPage() {
                         </span>
                       </TableCell>
                       <TableCell>{formatCurrency(member.total_deposit)}</TableCell>
-                      <TableCell className="text-success">{formatCurrency(assetWallet?.balance || 0)}</TableCell>
-                      <TableCell className="text-warning">{formatCurrency(bonusWallet?.balance || 0)}</TableCell>
+                      <TableCell className="text-success">{formatCurrency(assetBalance)}</TableCell>
+                      <TableCell className="text-warning">{formatCurrency(bonusBalance)}</TableCell>
                       <TableCell>{formatDate(member.created_at)}</TableCell>
                       <TableCell>
                         <span className={member.is_banned ? 'text-destructive' : 'text-success'}>
@@ -342,13 +344,13 @@ export default function MembersPage() {
                   <div className="rounded-lg bg-success/10 p-3">
                     <p className="text-sm text-muted-foreground">Asset Wallet</p>
                     <p className="text-xl font-bold text-success">
-                      {formatCurrency(selectedMember.wallets.find(w => w.wallet_type === 'asset')?.balance || 0)}
+                      {formatCurrency(Number(selectedMember.financial_wallets?.[0]?.active_deposit || 0))}
                     </p>
                   </div>
                   <div className="rounded-lg bg-warning/10 p-3">
                     <p className="text-sm text-muted-foreground">Bonus Wallet</p>
                     <p className="text-xl font-bold text-warning">
-                      {formatCurrency(selectedMember.wallets.find(w => w.wallet_type === 'bonus')?.balance || 0)}
+                      {formatCurrency(Number(selectedMember.financial_wallets?.[0]?.network_bonus_balance || 0))}
                     </p>
                   </div>
                 </div>
