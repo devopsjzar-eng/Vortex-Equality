@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowDownToLine, Copy, CheckCircle, Loader2, AlertCircle, QrCode, ExternalLink } from 'lucide-react'
@@ -33,6 +33,7 @@ const MIN_DEPOSIT_USD = Number(process.env.NEXT_PUBLIC_MIN_DEPOSIT_USD || 50)
 
 export default function DepositPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [amount, setAmount] = useState('')
   const [selectedCrypto, setSelectedCrypto] = useState('')
   const [loading, setLoading] = useState(false)
@@ -41,6 +42,19 @@ export default function DepositPage() {
   const [copied, setCopied] = useState(false)
   const [now, setNow] = useState(Date.now())
   const [depositStatus, setDepositStatus] = useState<'waiting' | 'confirmed' | 'failed'>('waiting')
+
+  // Handle Plisio success/fail redirect (?status=success from success_callback_url)
+  useEffect(() => {
+    const redirectStatus = searchParams.get('status')
+    if (redirectStatus === 'success') {
+      setDepositStatus('confirmed')
+      // Clean the URL param without full navigation
+      window.history.replaceState({}, '', '/dashboard/deposit')
+    } else if (redirectStatus === 'failed') {
+      setDepositStatus('failed')
+      window.history.replaceState({}, '', '/dashboard/deposit')
+    }
+  }, [searchParams])
 
   // Countdown timer
   useEffect(() => {
@@ -139,6 +153,23 @@ export default function DepositPage() {
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  // Plisio redirected back with ?status=success — show success even with no payment state
+  if (!payment && depositStatus === 'confirmed') {
+    return (
+      <div className="w-full text-foreground">
+        <div className="mx-auto max-w-2xl">
+          <Card className="apple-matte-surface">
+            <CardContent className="flex flex-col items-center gap-4 p-10 text-center">
+              <CheckCircle className="h-14 w-14 text-emerald-400" />
+              <h2 className="text-2xl font-bold text-emerald-300">Payment Confirmed!</h2>
+              <p className="text-muted-foreground">Your Active Asset has been credited. Redirecting to dashboard...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   if (payment) {
