@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       // Bonus wallet — directly credit network_bonus_balance in financial_wallets
       const { data: wallet } = await supabaseAdmin
         .from('financial_wallets')
-        .select('id, network_bonus_balance')
+        .select('network_bonus_balance')
         .eq('user_id', userId)
         .maybeSingle()
 
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
             network_bonus_balance: Number(wallet.network_bonus_balance) + creditAmount,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', wallet.id)
+          .eq('user_id', userId)
         if (updateErr) {
           return NextResponse.json({ error: updateErr.message }, { status: 500 })
         }
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
         description: reason || 'Admin bonus credit',
         metadata,
         created_by: adminUser?.id,
-      }).throwOnError().then(() => {}).catch(() => {})
+      }).catch(() => {})
     }
 
     return NextResponse.json({
