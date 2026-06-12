@@ -64,12 +64,12 @@ async function recalcChain(supabase: any, startUserId: string) {
       .eq('id', currentId)
 
     // Move up chain
-    const { data: parent } = await supabase
+    const { data: parentRow } = await supabase
       .from('profiles')
       .select('referred_by')
       .eq('id', currentId)
       .single()
-    currentId = parent?.referred_by || null
+    currentId = (parentRow as { referred_by: string | null } | null)?.referred_by || null
   }
 }
 
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Update referred_by
+    // Update profiles.referred_by
     const { error: updateError } = await supabase
       .from('profiles')
       .update({ referred_by: newUplineId || null, updated_at: new Date().toISOString() })
@@ -134,6 +134,21 @@ export async function POST(request: Request) {
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
+    // Update referral_edges — this is what get_referral_tree actually reads
+    if (newUplineId) {
+      // Upsert the edge: userId is now sponsored by newUplineId
+      const { error: edgeError } = await supabase
+        .from('referral_edges')
+        .upsert({ user_id: userId, sponsor_id: newUplineId }, { onConflict: 'user_id' })
+      if (edgeError) {
+        console.error('[change-upline] referral_edges upsert failed:', edgeError.message)
+        return NextResponse.json({ error: edgeError.message }, { status: 500 })
+      }
+    } else {
+      // Removing upline — delete the edge entirely
+      await supabase.from('referral_edges').delete().eq('user_id', userId)
     }
 
     // Recalculate stats for old upline chain
