@@ -89,17 +89,23 @@ export async function POST(request: Request) {
       }
     } else {
       // Bonus wallet — directly credit network_bonus_balance in financial_wallets
-      const { data: wallet } = await supabaseAdmin
+      const { data: wallet, error: walletFetchErr } = await supabaseAdmin
         .from('financial_wallets')
         .select('network_bonus_balance')
         .eq('user_id', userId)
         .maybeSingle()
 
+      if (walletFetchErr) {
+        return NextResponse.json({ error: walletFetchErr.message }, { status: 500 })
+      }
+
+      const currentBonus = Number(wallet?.network_bonus_balance ?? 0)
+
       if (!wallet) {
-        // Create wallet row if it doesn't exist
-        const { error: insertErr } = await supabaseAdmin
+        // Row doesn't exist — upsert to handle any race conditions
+        const { error: upsertErr } = await supabaseAdmin
           .from('financial_wallets')
-          .insert({
+          .upsert({
             user_id: userId,
             network_bonus_balance: creditAmount,
             main_balance: 0,
@@ -109,15 +115,15 @@ export async function POST(request: Request) {
             total_withdrawn: 0,
             is_bep_reached: false,
             is_maxed_out: false,
-          })
-        if (insertErr) {
-          return NextResponse.json({ error: insertErr.message }, { status: 500 })
+          }, { onConflict: 'user_id' })
+        if (upsertErr) {
+          return NextResponse.json({ error: upsertErr.message }, { status: 500 })
         }
       } else {
         const { error: updateErr } = await supabaseAdmin
           .from('financial_wallets')
           .update({
-            network_bonus_balance: Number(wallet.network_bonus_balance) + creditAmount,
+            network_bonus_balance: currentBonus + creditAmount,
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', userId)
@@ -126,16 +132,18 @@ export async function POST(request: Request) {
         }
       }
 
-      // Write ledger entry
-      await supabaseAdmin.from('ledger_entries').insert({
-        user_id: userId,
-        entry_type: 'admin_credit',
-        amount: creditAmount,
-        balance_after: Number(wallet?.network_bonus_balance ?? 0) + creditAmount,
-        description: reason || 'Admin bonus credit',
-        metadata,
-        created_by: adminUser?.id,
-      }).catch(() => {})
+      // Write ledger entry (non-fatal)
+      try {
+        await supabaseAdmin.from('ledger_entries').insert({
+          user_id: userId,
+          entry_type: 'admin_credit',
+          amount: creditAmount,
+          balance_after: currentBonus + creditAmount,
+          description: reason || 'Admin bonus credit',
+          metadata,
+          created_by: adminUser?.id,
+        })
+      } catch { /* ledger failure is non-fatal */ }
     }
 
     return NextResponse.json({
