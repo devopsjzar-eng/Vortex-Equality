@@ -40,12 +40,44 @@ export default function DepositPage() {
   const [payment, setPayment] = useState<PaymentData | null>(null)
   const [copied, setCopied] = useState(false)
   const [now, setNow] = useState(Date.now())
+  const [depositStatus, setDepositStatus] = useState<'waiting' | 'confirmed' | 'failed'>('waiting')
 
+  // Countdown timer
   useEffect(() => {
     if (!payment) return
     const interval = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(interval)
   }, [payment])
+
+  // Auto-redirect to dashboard 3 seconds after confirmed
+  useEffect(() => {
+    if (depositStatus !== 'confirmed') return
+    const t = window.setTimeout(() => router.push('/dashboard'), 3000)
+    return () => window.clearTimeout(t)
+  }, [depositStatus, router])
+
+  // Poll order status every 8 seconds while waiting
+  useEffect(() => {
+    if (!payment || depositStatus !== 'waiting') return
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/plisio/status?paymentId=${encodeURIComponent(payment.id)}`)
+        const data = await res.json()
+        if (data.status === 'confirmed') {
+          setDepositStatus('confirmed')
+        } else if (data.status === 'failed' || data.status === 'expired') {
+          setDepositStatus('failed')
+        }
+      } catch {
+        // silent — keep polling
+      }
+    }
+
+    poll() // immediate first check
+    const interval = window.setInterval(poll, 8000)
+    return () => window.clearInterval(interval)
+  }, [payment, depositStatus])
 
   const countdown = useMemo(() => {
     if (!payment?.expiresAt) return { label: '15:00', expired: false }
@@ -199,16 +231,24 @@ export default function DepositPage() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-center gap-2 p-4">
-                {countdown.expired ? (
-                  <AlertCircle className="h-5 w-5 text-red-400" />
-                ) : (
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                )}
-                <span className="text-muted-foreground">
-                  {countdown.expired ? 'Invoice expired. Create a new deposit.' : 'Waiting for Plisio confirmation...'}
-                </span>
-              </div>
+              {depositStatus === 'confirmed' ? (
+                <div className="flex flex-col items-center gap-3 rounded-lg border border-emerald-500/40 bg-emerald-900/20 p-6 text-center">
+                  <CheckCircle className="h-10 w-10 text-emerald-400" />
+                  <p className="text-lg font-semibold text-emerald-300">Payment Confirmed!</p>
+                  <p className="text-sm text-muted-foreground">Your Active Asset has been credited. Redirecting to dashboard...</p>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2 p-4">
+                  {countdown.expired ? (
+                    <AlertCircle className="h-5 w-5 text-red-400" />
+                  ) : (
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  )}
+                  <span className="text-muted-foreground">
+                    {countdown.expired ? 'Invoice expired. Create a new deposit.' : 'Waiting for Plisio confirmation...'}
+                  </span>
+                </div>
+              )}
 
               <Button
                 onClick={() => {
