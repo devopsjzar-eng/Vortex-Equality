@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -31,7 +31,7 @@ const cryptos = [
 
 const MIN_DEPOSIT_USD = Number(process.env.NEXT_PUBLIC_MIN_DEPOSIT_USD || 50)
 
-export default function DepositPage() {
+function DepositContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [amount, setAmount] = useState('')
@@ -438,5 +438,13 @@ export default function DepositPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function DepositPage() {
+  return (
+    <Suspense>
+      <DepositContent />
+    </Suspense>
   )
 }
