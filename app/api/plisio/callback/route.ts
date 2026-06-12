@@ -16,14 +16,23 @@ function getSupabaseAdmin() {
 
 async function parseCallbackPayload(request: NextRequest) {
   const contentType = request.headers.get('content-type') || ''
+  console.log('[Plisio DEBUG] Content-Type:', contentType)
 
   if (contentType.includes('application/json')) {
-    const json = await request.json()
-    return (json.data && typeof json.data === 'object') ? json.data : json
+    const text = await request.text()
+    console.log('[Plisio DEBUG] Raw JSON body:', text.slice(0, 2000))
+    const json = JSON.parse(text)
+    const payload = (json.data && typeof json.data === 'object') ? json.data : json
+    console.log('[Plisio DEBUG] Parsed JSON payload keys:', Object.keys(payload))
+    console.log('[Plisio DEBUG] Payload types:', Object.fromEntries(Object.entries(payload).map(([k, v]) => [k, typeof v])))
+    return payload
   }
 
   const text = await request.text()
-  return Object.fromEntries(new URLSearchParams(text).entries())
+  console.log('[Plisio DEBUG] Raw form body:', text.slice(0, 2000))
+  const payload = Object.fromEntries(new URLSearchParams(text).entries())
+  console.log('[Plisio DEBUG] Parsed form payload keys:', Object.keys(payload))
+  return payload
 }
 
 async function upsertLegacyTransaction(params: {

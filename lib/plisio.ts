@@ -67,16 +67,22 @@ export function verifyPlisioCallback(payload: Record<string, unknown>, secretKey
   const verifyHash = String(payload.verify_hash || '')
   if (!verifyHash || !secretKey) return false
 
+  // Plisio computes hash on $_POST (all strings), so coerce all primitives to strings
+  // to match PHP's serialize() on form-encoded data regardless of how we received them.
   const normalized = Object.keys(payload)
     .filter((key) => key !== 'verify_hash')
     .sort()
     .reduce((acc, key) => {
       const value = payload[key]
-      // Preserve original type so phpSerializeValue can match PHP's serialize() exactly.
-      // Exception: tx_urls needs HTML entity decoding.
-      acc[key] = key === 'tx_urls' && typeof value === 'string'
-        ? decodeHtmlEntities(value)
-        : value
+      if (key === 'tx_urls' && typeof value === 'string') {
+        acc[key] = decodeHtmlEntities(value)
+      } else if (Array.isArray(value) || (value !== null && typeof value === 'object')) {
+        // Keep arrays/objects as-is for PHP array serialization
+        acc[key] = value
+      } else {
+        // Coerce primitives to string — Plisio's PHP $_POST always has string values
+        acc[key] = value === null || value === undefined ? '' : String(value)
+      }
       return acc
     }, {} as Record<string, unknown>)
 
@@ -85,6 +91,11 @@ export function verifyPlisioCallback(payload: Record<string, unknown>, secretKey
     .createHmac('sha1', secretKey)
     .update(serialized)
     .digest('hex')
+
+  console.log('[Plisio DEBUG] verify_hash received:', verifyHash)
+  console.log('[Plisio DEBUG] computed hash:', checkHash)
+  console.log('[Plisio DEBUG] serialized (first 500):', serialized.slice(0, 500))
+  console.log('[Plisio DEBUG] match:', checkHash === verifyHash)
 
   const expected = Buffer.from(checkHash)
   const received = Buffer.from(verifyHash)
