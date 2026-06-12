@@ -20,17 +20,19 @@ async function parseCallbackPayload(request: NextRequest) {
 
   if (contentType.includes('application/json')) {
     const text = await request.text()
-    console.log('[Plisio DEBUG] Raw JSON body:', text.slice(0, 2000))
+    console.log('[Plisio DEBUG] Raw JSON body:', text.slice(0, 1000))
     const json = JSON.parse(text)
     const payload = (json.data && typeof json.data === 'object') ? json.data : json
     console.log('[Plisio DEBUG] Parsed JSON payload keys:', Object.keys(payload))
-    console.log('[Plisio DEBUG] Payload types:', Object.fromEntries(Object.entries(payload).map(([k, v]) => [k, typeof v])))
     return payload
   }
 
-  const text = await request.text()
-  console.log('[Plisio DEBUG] Raw form body:', text.slice(0, 2000))
-  const payload = Object.fromEntries(new URLSearchParams(text).entries())
+  // Handles both multipart/form-data AND application/x-www-form-urlencoded
+  const formData = await request.formData()
+  const payload: Record<string, string> = {}
+  formData.forEach((value, key) => {
+    payload[key] = String(value)
+  })
   console.log('[Plisio DEBUG] Parsed form payload keys:', Object.keys(payload))
   return payload
 }
