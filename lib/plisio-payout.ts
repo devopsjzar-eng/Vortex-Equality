@@ -102,13 +102,22 @@ export async function sendPlisioPayout(params: PlisioPayoutRequest): Promise<Pli
       headers: { Accept: 'application/json' },
     })
     const rawText = await response.text()
-    const data = rawText ? JSON.parse(rawText) : {}
+    console.log('[Plisio Payout] status:', response.status, 'body:', rawText.slice(0, 500))
+
+    let data: any = {}
+    try { data = rawText ? JSON.parse(rawText) : {} } catch { data = { _raw: rawText } }
 
     if (!response.ok || data.status !== 'success') {
+      const errMsg =
+        data?.data?.message ||
+        data?.message ||
+        data?.error ||
+        (typeof data?._raw === 'string' ? data._raw : null) ||
+        `Plisio payout failed with status ${response.status}`
       return {
         success: false,
         provider: 'plisio',
-        error: data.message || data.error || `Plisio payout failed with status ${response.status}`,
+        error: errMsg,
         code: data.code || response.status,
         raw: data,
       }

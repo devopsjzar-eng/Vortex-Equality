@@ -35,6 +35,7 @@ export async function approveWithdrawalWithPlisio(params: {
           admin_notes: adminNotes || metadata.admin_notes || null,
           plisio_payout_error: payout.error,
           plisio_payout_code: payout.code || null,
+          plisio_payout_raw: payout.raw || null,
           payout_attempted_at: new Date().toISOString(),
         },
       })
