@@ -140,7 +140,7 @@ export default function WithdrawPage() {
     if (selectedWallet === 'bonus') {
       return { withdrawalFee: 5, total: 5 }
     }
-    const hasBreakeven = getRoiPercentage() >= 100
+    const hasBreakeven = financialWallet?.is_bep_reached ?? false
     return {
       withdrawalFee: hasBreakeven ? 5 : 20,
       total: hasBreakeven ? 5 : 20
