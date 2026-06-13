@@ -59,16 +59,35 @@ export async function POST(request: NextRequest) {
 
     const grossAmount = Number(withdrawal.gross_amount)
     const rejectedAt = new Date().toISOString()
+    const walletSource = withdrawal.wallet_source || withdrawal.metadata?.wallet_source || 'main'
 
-    // 3. Restore wallet — request_withdrawal always deducts gross_amount from
-    //    main_balance and adds to total_withdrawn, so we reverse exactly that.
+    // 3. Restore wallet — reverse exactly what request_withdrawal deducted.
+    //    New-style withdrawals store main_debit + active_deposit_reduction in metadata.
+    //    Bonus withdrawals restore to network_bonus_balance.
+    const metaMainDebit = withdrawal.metadata?.main_debit !== undefined
+      ? Number(withdrawal.metadata.main_debit) : null
+    const metaActiveDeposit = withdrawal.metadata?.active_deposit_reduction !== undefined
+      ? Number(withdrawal.metadata.active_deposit_reduction) : null
+
+    const walletUpdate: Record<string, unknown> = { updated_at: rejectedAt }
+
+    if (walletSource === 'bonus') {
+      walletUpdate.network_bonus_balance = Number(wallet.network_bonus_balance) + grossAmount
+    } else {
+      walletUpdate.total_withdrawn = Math.max(0, Number(wallet.total_withdrawn) - grossAmount)
+      if (metaMainDebit !== null && metaActiveDeposit !== null) {
+        // New-style: restore exactly what was deducted from each sub-balance
+        walletUpdate.main_balance = Number(wallet.main_balance) + metaMainDebit
+        walletUpdate.active_deposit = Number(wallet.active_deposit) + metaActiveDeposit
+      } else {
+        // Old-style (no metadata): fall back to main_balance
+        walletUpdate.main_balance = Number(wallet.main_balance) + grossAmount
+      }
+    }
+
     const { error: walletUpdateError } = await supabaseAdmin
       .from('financial_wallets')
-      .update({
-        main_balance: Number(wallet.main_balance) + grossAmount,
-        total_withdrawn: Math.max(0, Number(wallet.total_withdrawn) - grossAmount),
-        updated_at: rejectedAt,
-      })
+      .update(walletUpdate)
       .eq('user_id', withdrawal.user_id)
 
     if (walletUpdateError) {
