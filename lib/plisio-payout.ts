@@ -97,9 +97,13 @@ export async function sendPlisioPayout(params: PlisioPayoutRequest): Promise<Pli
   })
 
   try {
+    const proxySecret = process.env.PLISIO_PROXY_SECRET
     const response = await fetch(`${PLISIO_API_URL}/operations/withdraw?${query.toString()}`, {
       method: 'GET',
-      headers: { Accept: 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        ...(proxySecret ? { 'X-Proxy-Secret': proxySecret } : {}),
+      },
     })
     const rawText = await response.text()
     console.log('[Plisio Payout] status:', response.status, 'body:', rawText.slice(0, 500))
