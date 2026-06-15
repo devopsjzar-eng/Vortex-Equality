@@ -1,4 +1,4 @@
-import { PLISIO_API_URL, normalizePlisioCurrency } from '@/lib/plisio'
+import { normalizePlisioCurrency } from '@/lib/plisio'
 
 export type PlisioPayoutRequest = {
   address: string
@@ -61,6 +61,10 @@ export async function sendPlisioPayout(params: PlisioPayoutRequest): Promise<Pli
     }
   }
 
+  // Use dedicated payout proxy URL if set (routes through VPS with static IP).
+  // Falls back to PLISIO_API_BASE_URL so deposits are unaffected.
+  const payoutApiUrl = process.env.PLISIO_PAYOUT_API_URL || process.env.PLISIO_API_BASE_URL || 'https://api.plisio.net/api/v1'
+
   const currency = mapWithdrawalNetworkToPlisioCurrency(params.currency)
   if (!['USDT_TRX', 'USDT_BSC'].includes(currency)) {
     return {
@@ -98,7 +102,7 @@ export async function sendPlisioPayout(params: PlisioPayoutRequest): Promise<Pli
 
   try {
     const proxySecret = process.env.PLISIO_PROXY_SECRET
-    const response = await fetch(`${PLISIO_API_URL}/operations/withdraw?${query.toString()}`, {
+    const response = await fetch(`${payoutApiUrl}/operations/withdraw?${query.toString()}`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
