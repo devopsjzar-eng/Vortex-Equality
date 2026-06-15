@@ -31,6 +31,7 @@ import {
   Activity,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Toaster } from '@/components/ui/sonner'
 
 const adminNavItems = [
   { href: '/vx-ctrl-9f2a', label: 'Overview', icon: LayoutDashboard },
@@ -222,6 +223,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {children}
           </div>
         </main>
+        <Toaster position="top-right" richColors closeButton />
       </div>
     </div>
   )

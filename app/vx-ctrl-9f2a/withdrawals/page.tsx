@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle, Clock, Loader2, Send, Wallet, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle, Clock, Loader2, Send, Wallet, XCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,6 +53,7 @@ export default function WithdrawalsPage() {
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<AdminWithdrawal | null>(null)
   const [action, setAction] = useState<'approve' | 'reject' | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const fetchWithdrawals = useCallback(async () => {
     setLoading(true)
@@ -62,7 +64,8 @@ export default function WithdrawalsPage() {
       setWithdrawals(data.withdrawals || [])
       setStats(data.stats || { pendingCount: 0, pendingAmount: 0, approvedAmount: 0 })
     } catch (error) {
-      console.error('Error loading withdrawals:', error)
+      const msg = error instanceof Error ? error.message : 'Failed to load withdrawals'
+      toast.error('Failed to load withdrawals', { description: msg })
     } finally {
       setLoading(false)
     }
@@ -83,9 +86,17 @@ export default function WithdrawalsPage() {
       minute: '2-digit',
     })
 
+  const closeDialog = () => {
+    setSelectedWithdrawal(null)
+    setAction(null)
+    setAdminNotes('')
+    setActionError(null)
+  }
+
   const handleAction = async () => {
     if (!selectedWithdrawal || !action) return
     setProcessing(true)
+    setActionError(null)
     try {
       const endpoint =
         action === 'approve'
@@ -98,14 +109,39 @@ export default function WithdrawalsPage() {
         body: JSON.stringify({ transactionId: selectedWithdrawal.id, adminNotes }),
       })
       const data = await response.json()
-      if (!response.ok || data.error) throw new Error(data.error || 'Failed to process withdrawal')
 
+      if (!response.ok || data.error) {
+        // Keep dialog open and show the exact error (Plisio errors, etc.)
+        const errMsg = data.error || `Failed to ${action} withdrawal`
+        setActionError(errMsg)
+        toast.error(action === 'approve' ? 'Payout failed' : 'Rejection failed', {
+          description: errMsg,
+          duration: 8000,
+        })
+        return
+      }
+
+      // Success — close dialog and refresh
+      const memberName = selectedWithdrawal.profile?.full_name || 'Member'
+      const net = formatCurrency(selectedWithdrawal.net_amount)
+      closeDialog()
       await fetchWithdrawals()
-      setSelectedWithdrawal(null)
-      setAction(null)
-      setAdminNotes('')
+
+      if (action === 'approve') {
+        toast.success('Payout sent successfully', {
+          description: `${net} sent to ${memberName} via Plisio. Status: Processing.`,
+          duration: 6000,
+        })
+      } else {
+        toast.success('Withdrawal rejected & refunded', {
+          description: `${formatCurrency(selectedWithdrawal.amount)} gross has been refunded to ${memberName}'s wallet.`,
+          duration: 6000,
+        })
+      }
     } catch (error) {
-      console.error('Error processing withdrawal:', error)
+      const msg = error instanceof Error ? error.message : 'Unexpected error — please try again'
+      setActionError(msg)
+      toast.error('Something went wrong', { description: msg, duration: 8000 })
     } finally {
       setProcessing(false)
     }
@@ -114,13 +150,28 @@ export default function WithdrawalsPage() {
   const handleGlobalPayout = async () => {
     if (pendingWithdrawals.length === 0) return
     setGlobalPayoutProcessing(true)
+    const toastId = toast.loading(`Processing ${pendingWithdrawals.length} pending payout(s)…`)
     try {
       const response = await fetch('/api/admin/withdrawal/global-payout', { method: 'POST' })
       const data = await response.json()
-      if (!response.ok || data.error) throw new Error(data.error || 'Failed to process global payout')
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Global payout failed')
+      }
+
       await fetchWithdrawals()
+      toast.success('Global payout complete', {
+        id: toastId,
+        description: data.message || `All pending withdrawals have been processed via Plisio.`,
+        duration: 6000,
+      })
     } catch (error) {
-      console.error('Error processing global payout:', error)
+      const msg = error instanceof Error ? error.message : 'Global payout failed'
+      toast.error('Global payout failed', {
+        id: toastId,
+        description: msg,
+        duration: 10000,
+      })
     } finally {
       setGlobalPayoutProcessing(false)
     }
@@ -219,7 +270,7 @@ export default function WithdrawalsPage() {
                             size="sm"
                             variant="outline"
                             className="border-success text-success hover:bg-success hover:text-success-foreground"
-                            onClick={() => { setSelectedWithdrawal(withdrawal); setAction('approve') }}
+                            onClick={() => { setSelectedWithdrawal(withdrawal); setAction('approve'); setActionError(null) }}
                           >
                             <CheckCircle className="mr-1 h-4 w-4" />
                             Pay via Plisio
@@ -228,7 +279,7 @@ export default function WithdrawalsPage() {
                             size="sm"
                             variant="outline"
                             className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                            onClick={() => { setSelectedWithdrawal(withdrawal); setAction('reject') }}
+                            onClick={() => { setSelectedWithdrawal(withdrawal); setAction('reject'); setActionError(null) }}
                           >
                             <XCircle className="mr-1 h-4 w-4" />
                             Reject
@@ -297,14 +348,7 @@ export default function WithdrawalsPage() {
         </CardContent>
       </Card>
 
-      <Dialog
-        open={!!selectedWithdrawal && !!action}
-        onOpenChange={() => {
-          setSelectedWithdrawal(null)
-          setAction(null)
-          setAdminNotes('')
-        }}
-      >
+      <Dialog open={!!selectedWithdrawal && !!action} onOpenChange={closeDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{action === 'approve' ? 'Approve Withdrawal' : 'Reject Withdrawal'}</DialogTitle>
@@ -327,8 +371,12 @@ export default function WithdrawalsPage() {
                   <span className="font-medium">{formatCurrency(selectedWithdrawal.amount)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Net</span>
-                  <span className="font-medium">{formatCurrency(selectedWithdrawal.net_amount)}</span>
+                  <span className="text-muted-foreground">Fee ({selectedWithdrawal.fee_percentage}%)</span>
+                  <span className="font-medium text-destructive">− {formatCurrency(selectedWithdrawal.fee)}</span>
+                </div>
+                <div className="flex justify-between border-t border-border pt-2 mt-2">
+                  <span className="text-muted-foreground font-medium">Net Payout</span>
+                  <span className="font-bold">{formatCurrency(selectedWithdrawal.net_amount)}</span>
                 </div>
                 <div className="mt-2">
                   <span className="text-muted-foreground">Address</span>
@@ -336,8 +384,21 @@ export default function WithdrawalsPage() {
                 </div>
               </div>
 
+              {/* Inline error — stays visible so admin can read the Plisio error */}
+              {actionError && (
+                <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <p className="font-semibold">
+                      {action === 'approve' ? 'Plisio payout failed' : 'Action failed'}
+                    </p>
+                    <p className="mt-0.5 text-destructive/80">{actionError}</p>
+                  </div>
+                </div>
+              )}
+
               <Textarea
-                placeholder="Admin notes..."
+                placeholder="Admin notes (optional)…"
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
               />
@@ -345,10 +406,7 @@ export default function WithdrawalsPage() {
           )}
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => { setSelectedWithdrawal(null); setAction(null); setAdminNotes('') }}
-            >
+            <Button variant="outline" onClick={closeDialog} disabled={processing}>
               Cancel
             </Button>
             <Button
@@ -357,7 +415,9 @@ export default function WithdrawalsPage() {
               className={action === 'approve' ? 'bg-success hover:bg-success/90' : 'bg-destructive hover:bg-destructive/90'}
             >
               {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {action === 'approve' ? 'Send Plisio Payout' : 'Reject & Refund'}
+              {processing
+                ? (action === 'approve' ? 'Sending…' : 'Rejecting…')
+                : (action === 'approve' ? 'Send Plisio Payout' : 'Reject & Refund')}
             </Button>
           </DialogFooter>
         </DialogContent>
