@@ -60,16 +60,17 @@ end;
 $$;
 
 drop trigger if exists trg_propagate_group_turnover on public.financial_wallets;
+drop trigger if exists trg_propagate_group_turnover_insert on public.financial_wallets;
+drop trigger if exists trg_propagate_group_turnover_update on public.financial_wallets;
 
-create trigger trg_propagate_group_turnover
-  after insert or update of active_deposit
-  on public.financial_wallets
+create trigger trg_propagate_group_turnover_insert
+  after insert on public.financial_wallets
   for each row
-  when (
-    pg_trigger_depth() = 0
-    and (
-      tg_op = 'INSERT'
-      or old.active_deposit is distinct from new.active_deposit
-    )
-  )
+  when (pg_trigger_depth() = 0)
+  execute function public.propagate_group_turnover();
+
+create trigger trg_propagate_group_turnover_update
+  after update of active_deposit on public.financial_wallets
+  for each row
+  when (pg_trigger_depth() = 0 and old.active_deposit is distinct from new.active_deposit)
   execute function public.propagate_group_turnover();
