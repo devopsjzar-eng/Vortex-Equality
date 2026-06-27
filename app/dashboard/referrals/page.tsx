@@ -15,6 +15,10 @@ type ReferralTreeRow = {
   level: number
   active_deposit: number
   is_maxed_out: boolean
+  full_name?: string
+  email?: string
+  username?: string
+  rank?: string
 }
 
 export default function ReferralsPage() {
@@ -210,31 +214,42 @@ export default function ReferralsPage() {
             </p>
           ) : (
             <div className="space-y-3">
-              {tree.map((member) => (
-                <div
-                  key={`${member.user_id}-${member.level}`}
-                  className="flex items-center justify-between rounded-lg border border-border p-4"
-                  style={{ marginLeft: `${Math.min(member.level - 1, 4) * 16}px` }}
-                >
-                  <div>
-                    <p className="font-medium">Level {member.level}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{member.user_id}</p>
+              {tree.map((member) => {
+                const displayName = member.full_name || member.username || member.email?.split('@')[0] || 'Member'
+                const deposit = Number(member.active_deposit || 0)
+                return (
+                  <div
+                    key={`${member.user_id}-${member.level}`}
+                    className="flex items-center justify-between rounded-lg border border-border p-4"
+                    style={{ marginLeft: `${Math.min(member.level - 1, 4) * 16}px` }}
+                  >
+                    <div>
+                      <p className="font-medium">{displayName}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-muted-foreground">Level {member.level}</span>
+                        {member.rank && member.rank !== 'Bronze' && (
+                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
+                            {member.rank}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">{formatCurrency(deposit)}</p>
+                      <span className={cn(
+                        'inline-flex rounded-full px-2 py-1 text-xs font-medium',
+                        member.is_maxed_out
+                          ? 'bg-destructive/10 text-destructive'
+                          : deposit > 0
+                            ? 'bg-success/10 text-success'
+                            : 'bg-muted text-muted-foreground'
+                      )}>
+                        {member.is_maxed_out ? 'Maxed Out' : deposit > 0 ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(Number(member.active_deposit || 0))}</p>
-                    <span className={cn(
-                      'inline-flex rounded-full px-2 py-1 text-xs font-medium',
-                      member.is_maxed_out
-                        ? 'bg-destructive/10 text-destructive'
-                        : Number(member.active_deposit || 0) > 0
-                          ? 'bg-success/10 text-success'
-                          : 'bg-muted text-muted-foreground'
-                    )}>
-                      {member.is_maxed_out ? 'Maxed Out' : Number(member.active_deposit || 0) > 0 ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>
