@@ -36,6 +36,7 @@ type QualificationData = {
   groupVolume?: number
   groupOmset?: number
   legOmsets?: number[]
+  legVolumes?: Array<{ user_id: string; volume: number }>
   directCount?: number
 }
 
@@ -124,32 +125,31 @@ export function GenealogyTreeView() {
 
   const stats = useMemo(() => {
     const nodes = data?.tree || []
-    // Count members who have EVER deposited (total_deposit > 0), matching live system logic.
-    // Include root user if they also have deposits.
     const rootTotalDeposit = Number(data?.profile?.total_deposit || 0)
     const downlineActive = nodes.filter((node) => Number(node.total_deposit || 0) > 0).length
     const activeMembers = downlineActive + (rootTotalDeposit > 0 ? 1 : 0)
 
-    // Use get_rank_progress (authoritative) for group volume and leg volumes.
-    // This is the same source the Rewards page uses, ensuring consistent numbers.
     const totalVolume = Number(qualification?.groupVolume ?? qualification?.groupOmset ?? 0)
-    const legOmsets: number[] = (qualification?.legOmsets || []).map(Number)
 
-    // Map leg volumes back to direct-child nodes for display (name, rank, etc.)
+    // legVolumes from get_rank_progress has {user_id, volume} sorted DESC — use it for exact matching.
+    const legVolumes = qualification?.legVolumes || []
+    const legVolumeMap = new Map<string, number>(legVolumes.map((leg) => [leg.user_id, Number(leg.volume)]))
+
     const direct = childrenBySponsor.get(data?.rootUserId || '') || []
+    // Sort direct children by authoritative volume, falling back to subtreeVolume
     const sortedDirect = [...direct].sort((a, b) => {
-      const aVol = legOmsets[direct.indexOf(a)] ?? 0
-      const bVol = legOmsets[direct.indexOf(b)] ?? 0
+      const aVol = legVolumeMap.get(a.user_id) ?? (Number(a.active_deposit || 0) + subtreeVolume(a.user_id))
+      const bVol = legVolumeMap.get(b.user_id) ?? (Number(b.active_deposit || 0) + subtreeVolume(b.user_id))
       return bVol - aVol
     })
 
-    const topLegs = legOmsets.slice(0, 3).map((vol, idx) => ({
-      ...(sortedDirect[idx] || { user_id: String(idx), sponsor_id: null, level: 1, active_deposit: 0, is_maxed_out: false, full_name: `Leg ${idx + 1}`, email: null, username: null, rank: '', total_deposit: 0 }),
-      leg_volume: vol,
+    const topLegs = sortedDirect.slice(0, 3).map((node) => ({
+      ...node,
+      leg_volume: legVolumeMap.get(node.user_id) ?? (Number(node.active_deposit || 0) + subtreeVolume(node.user_id)),
     }))
 
-    return { activeMembers, totalVolume, topLegs }
-  }, [childrenBySponsor, data, qualification])
+    return { activeMembers, totalVolume, topLegs, legVolumeMap }
+  }, [childrenBySponsor, data, qualification, subtreeVolume])
 
   const referralLink = typeof window !== 'undefined' && data?.profile?.referral_code
     ? `${window.location.origin}/auth/sign-up?ref=${data.profile.referral_code}`
@@ -236,7 +236,7 @@ export function GenealogyTreeView() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Leg Volume</p>
-                  <p className="font-semibold">{formatCurrency(Number(node.active_deposit || 0) + subtreeVolume(node.user_id))}</p>
+                  <p className="font-semibold">{formatCurrency(stats.legVolumeMap.get(node.user_id) ?? (Number(node.active_deposit || 0) + subtreeVolume(node.user_id)))}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Status</p>
