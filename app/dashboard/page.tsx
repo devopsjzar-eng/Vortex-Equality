@@ -337,9 +337,11 @@ export default function DashboardPage() {
     }
   }
 
-  // Calculate ROI percentage from claimed profit against the active deposit.
-  const roiPercentage = activeDeposit > 0
-    ? (totalClaimedProfit / activeDeposit) * 100
+  // ROI = how much the active deposit has grown above the initial deposit.
+  // Matches live system: (current_balance - initial_deposit) / initial_deposit × 100
+  const initialDeposit = Number(profile?.total_deposit || 0)
+  const roiPercentage = initialDeposit > 0 && activeDeposit > initialDeposit
+    ? ((activeDeposit - initialDeposit) / initialDeposit) * 100
     : 0
   const roiProgress = Math.min(Math.max(roiPercentage / 4, 0), 100) // Progress to 400%
   const isMaxROI = isMaxedOut || roiPercentage >= 400
@@ -433,10 +435,10 @@ export default function DashboardPage() {
             {/* Balance */}
             <div>
               <p className="text-3xl font-bold tracking-tight text-white">
-                {formatCurrency(assetBalance)}
+                {formatCurrency(activeDeposit)}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Active Deposit: {formatCurrency(activeDeposit)}
+                Initial Deposit: {formatCurrency(initialDeposit)}
               </p>
             </div>
 
