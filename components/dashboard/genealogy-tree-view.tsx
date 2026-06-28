@@ -32,6 +32,13 @@ type TreeResponse = {
   error?: string
 }
 
+type QualificationData = {
+  groupVolume?: number
+  groupOmset?: number
+  legOmsets?: number[]
+  directCount?: number
+}
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -53,6 +60,7 @@ export function GenealogyTreeView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<TreeResponse | null>(null)
+  const [qualification, setQualification] = useState<QualificationData | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
   const [copied, setCopied] = useState(false)
@@ -62,16 +70,25 @@ export function GenealogyTreeView() {
     setError(null)
 
     try {
-      const response = await fetch('/api/referral-tree', { cache: 'no-store' })
-      const payload = await response.json()
+      // Fetch tree structure and authoritative group/leg volumes in parallel
+      const [treeRes, qualRes] = await Promise.all([
+        fetch('/api/referral-tree', { cache: 'no-store' }),
+        fetch('/api/rank/check-qualification', { cache: 'no-store' }),
+      ])
 
-      if (!response.ok || payload.error) {
+      const payload = await treeRes.json()
+      if (!treeRes.ok || payload.error) {
         throw new Error(payload.error || 'Failed to load genealogy tree')
       }
 
       setData(payload)
       const directIds = new Set<string>((payload.tree || []).filter((node: TreeNode) => node.level === 1).map((node: TreeNode) => node.user_id))
       setExpanded(directIds)
+
+      if (qualRes.ok) {
+        const qualPayload = await qualRes.json()
+        setQualification(qualPayload)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load genealogy tree')
     } finally {
@@ -99,6 +116,7 @@ export function GenealogyTreeView() {
     return map
   }, [data])
 
+  // Used by individual tree nodes in the expandable tree to show per-node leg volume.
   const subtreeVolume = useCallback((nodeId: string): number => {
     const children = childrenBySponsor.get(nodeId) || []
     return children.reduce((sum, child) => sum + Number(child.active_deposit || 0) + subtreeVolume(child.user_id), 0)
@@ -111,18 +129,27 @@ export function GenealogyTreeView() {
     const rootTotalDeposit = Number(data?.profile?.total_deposit || 0)
     const downlineActive = nodes.filter((node) => Number(node.total_deposit || 0) > 0).length
     const activeMembers = downlineActive + (rootTotalDeposit > 0 ? 1 : 0)
-    const totalVolume = nodes.reduce((sum, node) => sum + Number(node.active_deposit || 0), 0)
+
+    // Use get_rank_progress (authoritative) for group volume and leg volumes.
+    // This is the same source the Rewards page uses, ensuring consistent numbers.
+    const totalVolume = Number(qualification?.groupVolume ?? qualification?.groupOmset ?? 0)
+    const legOmsets: number[] = (qualification?.legOmsets || []).map(Number)
+
+    // Map leg volumes back to direct-child nodes for display (name, rank, etc.)
     const direct = childrenBySponsor.get(data?.rootUserId || '') || []
-    const topLegs = direct
-      .map((node) => ({
-        ...node,
-        leg_volume: Number(node.active_deposit || 0) + subtreeVolume(node.user_id),
-      }))
-      .sort((a, b) => b.leg_volume - a.leg_volume)
-      .slice(0, 3)
+    const sortedDirect = [...direct].sort((a, b) => {
+      const aVol = legOmsets[direct.indexOf(a)] ?? 0
+      const bVol = legOmsets[direct.indexOf(b)] ?? 0
+      return bVol - aVol
+    })
+
+    const topLegs = legOmsets.slice(0, 3).map((vol, idx) => ({
+      ...(sortedDirect[idx] || { user_id: String(idx), sponsor_id: null, level: 1, active_deposit: 0, is_maxed_out: false, full_name: `Leg ${idx + 1}`, email: null, username: null, rank: '', total_deposit: 0 }),
+      leg_volume: vol,
+    }))
 
     return { activeMembers, totalVolume, topLegs }
-  }, [childrenBySponsor, data, subtreeVolume])
+  }, [childrenBySponsor, data, qualification])
 
   const referralLink = typeof window !== 'undefined' && data?.profile?.referral_code
     ? `${window.location.origin}/auth/sign-up?ref=${data.profile.referral_code}`
