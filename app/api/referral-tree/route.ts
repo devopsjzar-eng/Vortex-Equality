@@ -29,7 +29,7 @@ export async function GET() {
     const adminClient = getSupabaseAdmin()
     const { data: profiles } = await adminClient
       .from('profiles')
-      .select('id, full_name, email, username, referral_code, rank')
+      .select('id, full_name, email, username, referral_code, rank, total_deposit')
       .in('id', userIds)
 
     const profileById = new Map((profiles || []).map((profile: any) => [profile.id, profile]))
@@ -43,6 +43,7 @@ export async function GET() {
         email: profile.email || null,
         username: profile.username || null,
         rank: profile.rank || 'Starter',
+        total_deposit: Number(profile.total_deposit || 0),
       }
     })
 

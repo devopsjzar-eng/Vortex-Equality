@@ -17,6 +17,7 @@ type TreeNode = {
   email: string | null
   username: string | null
   rank: string
+  total_deposit: number
 }
 
 type TreeResponse = {
@@ -25,6 +26,7 @@ type TreeResponse = {
   profile: {
     full_name?: string | null
     referral_code?: string | null
+    total_deposit?: number | null
   } | null
   tree: TreeNode[]
   error?: string
@@ -104,7 +106,11 @@ export function GenealogyTreeView() {
 
   const stats = useMemo(() => {
     const nodes = data?.tree || []
-    const activeMembers = nodes.filter((node) => Number(node.active_deposit || 0) > 0).length
+    // Count members who have EVER deposited (total_deposit > 0), matching live system logic.
+    // Include root user if they also have deposits.
+    const rootTotalDeposit = Number(data?.profile?.total_deposit || 0)
+    const downlineActive = nodes.filter((node) => Number(node.total_deposit || 0) > 0).length
+    const activeMembers = downlineActive + (rootTotalDeposit > 0 ? 1 : 0)
     const totalVolume = nodes.reduce((sum, node) => sum + Number(node.active_deposit || 0), 0)
     const direct = childrenBySponsor.get(data?.rootUserId || '') || []
     const topLegs = direct
