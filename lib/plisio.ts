@@ -40,7 +40,13 @@ function phpSerializeValue(value: unknown): string {
   }
 
   if (value !== null && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))
+    // PHP's ksort() (used by Plisio before serialize) sorts keys by byte order (strcmp),
+    // NOT by locale. localeCompare reorders punctuation like "_" and breaks the hash —
+    // e.g. it would place "txn_id" before "tx_urls" while PHP places "tx_urls" first.
+    // Use code-unit comparison to match PHP exactly.
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    )
     return `a:${entries.length}:{${entries.map(([key, item]) => `${phpSerializeString(key)}${phpSerializeValue(item)}`).join('')}}`
   }
 

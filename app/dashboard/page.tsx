@@ -304,11 +304,13 @@ export default function DashboardPage() {
         return
       }
 
-      const claimedAmount = Number(data.wallet?.main_balance || 0) - assetBalance
+      // Profit now compounds into the active asset (active_deposit), so derive the
+      // claimed amount from the active_deposit delta returned by the RPC.
+      const claimedAmount = Number(data.wallet?.active_deposit || 0) - activeDeposit
       const displayedAmount = claimedAmount > 0 ? claimedAmount : todayProfit?.amount || unclaimedProfit
-      
+
       toast.success(`Profit ${formatCurrency(displayedAmount)} claimed successfully!`, {
-        description: 'Funds were moved to your Main Wallet.',
+        description: 'Compounded into your Asset Wallet to keep earning.',
         duration: 5000
       })
       
@@ -443,6 +445,11 @@ export default function DashboardPage() {
               <p className="mt-1 text-xs text-slate-500">
                 Initial Deposit: {formatCurrency(initialDeposit)}
               </p>
+              {assetBalance > 0 && (
+                <p className="mt-1 text-xs font-medium text-emerald-400/90">
+                  Available Balance: {formatCurrency(assetBalance)}
+                </p>
+              )}
             </div>
 
             {/* ROI Progress */}
