@@ -198,43 +198,46 @@ export default function DashboardPage() {
         })))
       }
 
-      // Fetch profit data - simplified
+      // Fetch profit data from the new financial system (financial_profit_claims)
       // Get today's date in WIB
       const now = new Date()
       const jakartaNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }))
       const todayDateStr = jakartaNow.toISOString().split('T')[0]
-      
-      // Get daily profit and user's claim in single query
-      const { data: dailyProfitData } = await supabase
-        .from('daily_profits')
-        .select(`
-          id,
-          profit_date,
-          global_profit_percentage,
-          profit_claims (
-            id,
-            amount,
-            total_percentage,
-            status
-          )
-        `)
-        .eq('profit_date', todayDateStr)
-        .eq('profit_claims.user_id', user.id)
+
+      // Check whether the member already claimed today's profit (new system)
+      const { data: claimToday } = await supabase
+        .from('financial_profit_claims')
+        .select('id, amount, claim_date, created_at')
+        .eq('user_id', user.id)
+        .eq('claim_date', todayDateStr)
         .maybeSingle()
-      
-      if (dailyProfitData?.profit_claims && dailyProfitData.profit_claims.length > 0) {
-        const claim = dailyProfitData.profit_claims[0]
+
+      const currentActiveDeposit = Number(financialWalletRes.data?.active_deposit || 0)
+
+      if (claimToday) {
+        // Already claimed today — show the claimed state so the button stays hidden on reload
+        const claimedAmt = Number(claimToday.amount || 0)
+        const rate = currentActiveDeposit > 0 ? (claimedAmt / currentActiveDeposit) * 100 : 0
         setTodayProfit({
-          status: claim.status,
-          amount: claim.amount,
-          total_percentage: claim.total_percentage,
-          id: claim.id,
+          status: 'claimed',
+          amount: claimedAmt,
+          total_percentage: rate,
+          id: claimToday.id,
+          created_at: claimToday.created_at || ''
+        })
+      } else if (currentUnclaimedProfit > 0) {
+        const rate = currentActiveDeposit > 0 ? (currentUnclaimedProfit / currentActiveDeposit) * 100 : 0
+        setTodayProfit({
+          status: 'available',
+          amount: currentUnclaimedProfit,
+          total_percentage: rate,
+          id: null,
           created_at: ''
         })
       } else {
         setTodayProfit({
-          status: currentUnclaimedProfit > 0 ? 'available' : 'unavailable',
-          amount: currentUnclaimedProfit,
+          status: 'unavailable',
+          amount: 0,
           total_percentage: 0,
           id: null,
           created_at: ''
