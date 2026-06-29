@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}))
-    const claimDate = body?.claimDate || null
+    const claimDate = body?.claimDate || new Date().toISOString().split('T')[0]
 
     const { data: wallet, error } = await supabase.rpc('claim_unclaimed_profit', {
       p_claim_date: claimDate,

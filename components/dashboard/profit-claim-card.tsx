@@ -98,7 +98,7 @@ export function ProfitClaimCard({ userId, assetBalance = 0, boosterPercentage = 
     return () => clearInterval(interval)
   }, [])
 
-  // Fetch today's profit claim
+  // Fetch today's profit claim from the financial_wallets system
   const fetchProfitClaim = useCallback(async () => {
     if (!userId) {
       setLoading(false)
@@ -106,34 +106,60 @@ export function ProfitClaimCard({ userId, assetBalance = 0, boosterPercentage = 
     }
 
     try {
-      // Get today's daily_profit record first
       const today = new Date().toISOString().split('T')[0]
-      
-      const { data: dailyProfit } = await supabase
-        .from('daily_profits')
-        .select('id')
-        .eq('profit_date', today)
-        .single()
-      
-      if (!dailyProfit) {
-        setLoading(false)
+
+      // Check wallet unclaimed amount and today's claim status in parallel
+      const [walletRes, claimRes] = await Promise.all([
+        supabase
+          .from('financial_wallets')
+          .select('unclaimed_profit, active_deposit')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('financial_profit_claims')
+          .select('id, amount, created_at')
+          .eq('user_id', userId)
+          .eq('claim_date', today)
+          .maybeSingle(),
+      ])
+
+      const wallet = walletRes.data
+      const claimToday = claimRes.data
+      const activeDeposit = Number(wallet?.active_deposit || 0)
+
+      if (claimToday) {
+        const claimedAmt = Number(claimToday.amount || 0)
+        const rate = activeDeposit > 0 ? (claimedAmt / activeDeposit) * 100 : 0
+        setProfitClaim({
+          id: claimToday.id,
+          user_id: userId,
+          daily_profit_id: '',
+          amount: claimedAmt,
+          base_percentage: rate,
+          booster_percentage: 0,
+          total_percentage: rate,
+          status: 'claimed',
+          created_at: claimToday.created_at || today,
+          claimed_at: claimToday.created_at || null,
+        })
         return
       }
-      
-      // Then get user's profit claim for today
-      const { data, error } = await supabase
-        .from('profit_claims')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('daily_profit_id', dailyProfit.id)
-        .single()
-      
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profit claim:', error)
-      }
-      
-      if (data) {
-        setProfitClaim(data)
+
+      const unclaimedAmount = Number(wallet?.unclaimed_profit || 0)
+      if (unclaimedAmount > 0) {
+        const rate = activeDeposit > 0 ? (unclaimedAmount / activeDeposit) * 100 : 0
+        setProfitClaim({
+          id: 'available',
+          user_id: userId,
+          daily_profit_id: '',
+          amount: unclaimedAmount,
+          base_percentage: rate,
+          booster_percentage: 0,
+          total_percentage: rate,
+          status: 'available',
+          created_at: today,
+          claimed_at: null,
+        })
       }
     } catch (err) {
       console.error('Error:', err)
@@ -164,7 +190,7 @@ export function ProfitClaimCard({ userId, assetBalance = 0, boosterPercentage = 
       const response = await fetch('/api/profit/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ claimId: profitClaim.id, userId: userId })
+        body: JSON.stringify({ claimDate: new Date().toISOString().split('T')[0] })
       })
 
       const result = await response.json()
