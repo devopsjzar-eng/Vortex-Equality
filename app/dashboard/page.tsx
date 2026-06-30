@@ -342,11 +342,16 @@ export default function DashboardPage() {
     }
   }
 
-  // ROI = how much the active deposit has grown above the initial deposit.
+  // Main Wallet total = active asset + available (main) balance. This is the same
+  // figure the withdrawal page uses (main_balance + active_deposit), so the balance
+  // shown on the dashboard is identical to the withdrawable balance.
+  const mainWalletTotal = activeDeposit + assetBalance
+
+  // ROI = how much the wallet has grown above the initial deposit.
   // Matches live system: (current_balance - initial_deposit) / initial_deposit × 100
   const initialDeposit = Number(profile?.total_deposit || 0)
-  const roiPercentage = initialDeposit > 0 && activeDeposit > initialDeposit
-    ? ((activeDeposit - initialDeposit) / initialDeposit) * 100
+  const roiPercentage = initialDeposit > 0 && mainWalletTotal > initialDeposit
+    ? ((mainWalletTotal - initialDeposit) / initialDeposit) * 100
     : 0
   const roiProgress = Math.min(Math.max(roiPercentage / 4, 0), 100) // Progress to 400%
   const isMaxROI = isMaxedOut || roiPercentage >= 400
@@ -440,16 +445,11 @@ export default function DashboardPage() {
             {/* Balance */}
             <div>
               <p className="text-3xl font-bold tracking-tight text-white">
-                {formatCurrency(activeDeposit)}
+                {formatCurrency(mainWalletTotal)}
               </p>
               <p className="mt-1 text-xs text-slate-500">
                 Initial Deposit: {formatCurrency(initialDeposit)}
               </p>
-              {assetBalance > 0 && (
-                <p className="mt-1 text-xs font-medium text-emerald-400/90">
-                  Available Balance: {formatCurrency(assetBalance)}
-                </p>
-              )}
             </div>
 
             {/* ROI Progress */}
